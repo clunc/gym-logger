@@ -6,6 +6,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Install development tools and utilities
 RUN apt-get update && apt-get install -y \
     build-essential \
+    python3 \
+    sqlite3 \
     curl \
     ca-certificates \
     sudo \
