@@ -13,6 +13,7 @@
 	let restTimerStatus: 'idle' | 'active' | 'warning' | 'done' = 'idle';
 	let restTimerInterval: ReturnType<typeof setInterval> | null = null;
 	let restHideTimeout: ReturnType<typeof setTimeout> | null = null;
+	let pollInterval: ReturnType<typeof setInterval> | null = null;
 	let ready = false;
 	let loadError = '';
 
@@ -25,13 +26,26 @@
 		} finally {
 			currentSession = createSession(history);
 			ready = true;
+			pollInterval = setInterval(syncHistory, 15000);
 		}
 	});
 
 	onDestroy(() => {
 		if (restTimerInterval) clearInterval(restTimerInterval);
 		if (restHideTimeout) clearTimeout(restHideTimeout);
+		if (pollInterval) clearInterval(pollInterval);
 	});
+
+	async function syncHistory() {
+		try {
+			const latest = await fetchHistory();
+			history = latest;
+			currentSession = createSession(history);
+		} catch (error) {
+			console.error('Failed to refresh history', error);
+			loadError = 'Could not refresh history from server.';
+		}
+	}
 
 	function adjustWeight(exerciseIdx: number, setIdx: number, delta: number) {
 		const set = currentSession[exerciseIdx].sets[setIdx];
@@ -50,7 +64,7 @@
 		currentSession = [...currentSession];
 	}
 
-	function logSet(exerciseIdx: number, setIdx: number) {
+	async function logSet(exerciseIdx: number, setIdx: number) {
 		const exercise = currentSession[exerciseIdx];
 		const set = exercise.sets[setIdx];
 
@@ -82,10 +96,13 @@
 
 		currentSession = [...currentSession];
 		if (!loadError) {
-			appendHistory([entry]).catch((error) => {
+			try {
+				await appendHistory([entry]);
+				await syncHistory();
+			} catch (error) {
 				console.error(error);
 				loadError = 'Could not save history. Changes will not be saved.';
-			});
+			}
 		}
 		startRestTimer();
 	}
@@ -124,6 +141,10 @@
 		set.completed = false;
 		set.timestamp = null;
 		currentSession = [...currentSession];
+
+		if (!loadError) {
+			await syncHistory();
+		}
 	}
 
 	function startRestTimer() {
