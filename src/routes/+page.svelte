@@ -3,7 +3,7 @@
 	import ExerciseCard from '$lib/components/ExerciseCard.svelte';
 	import HistoryList from '$lib/components/HistoryList.svelte';
 	import RestTimer from '$lib/components/RestTimer.svelte';
-	import { appendHistory, fetchHistory } from '$lib/api/history';
+	import { appendHistory, deleteHistoryEntry, fetchHistory } from '$lib/api/history';
 	import { createSession, REST_SECONDS, todayString } from '$lib/workout';
 	import type { HistoryEntry, SessionExercise } from '$lib/types';
 
@@ -90,22 +90,35 @@
 		startRestTimer();
 	}
 
-	function undoSet(exerciseIdx: number, setIdx: number) {
+	async function undoSet(exerciseIdx: number, setIdx: number) {
 		const exercise = currentSession[exerciseIdx];
 		const set = exercise.sets[setIdx];
 		if (!set.completed || !set.timestamp) return;
 
+		const entry = {
+			exercise: exercise.name,
+			setNumber: set.setNumber,
+			timestamp: set.timestamp
+		};
+
+		try {
+			await deleteHistoryEntry(entry);
+		} catch (error) {
+			console.error(error);
+			loadError = 'Could not delete entry. History remains unchanged.';
+			return;
+		}
+
 		const index = history.findIndex(
 			(h) =>
-				h.exercise === exercise.name &&
-				h.setNumber === set.setNumber &&
-				h.timestamp === set.timestamp
+				h.exercise === entry.exercise &&
+				h.setNumber === entry.setNumber &&
+				h.timestamp === entry.timestamp
 		);
 
 		if (index !== -1) {
 			history.splice(index, 1);
 			history = [...history];
-			// Append-only persistence: keep DB entries for audit; UI remains accurate.
 		}
 
 		set.completed = false;

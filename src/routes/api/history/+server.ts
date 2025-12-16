@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { appendHistory, readHistory } from '$lib/server/historyStore';
+import { appendHistory, deleteTodayEntry, readHistory } from '$lib/server/historyStore';
 import type { RequestHandler } from './$types';
 import type { HistoryEntry } from '$lib/types';
 
@@ -31,4 +31,34 @@ export const PUT: RequestHandler = async ({ request }) => {
 
 	await appendHistory(entries);
 	return json({ ok: true });
+};
+
+export const DELETE: RequestHandler = async ({ request }) => {
+	const body = await request.json().catch(() => null);
+	const entry = (body as { entry?: unknown })?.entry;
+
+	if (
+		!entry ||
+		typeof entry !== 'object' ||
+		typeof (entry as Record<string, unknown>).exercise !== 'string' ||
+		typeof (entry as Record<string, unknown>).timestamp !== 'string' ||
+		typeof (entry as Record<string, unknown>).setNumber !== 'number'
+	) {
+		return json({ error: 'Invalid delete payload' }, { status: 400 });
+	}
+
+	const { exercise, setNumber, timestamp } = entry as {
+		exercise: string;
+		setNumber: number;
+		timestamp: string;
+	};
+
+	const tsDate = new Date(timestamp);
+	const today = new Date();
+	if (Number.isNaN(tsDate.getTime()) || tsDate.toDateString() !== today.toDateString()) {
+		return json({ error: 'Can only delete entries from today' }, { status: 400 });
+	}
+
+	const deleted = await deleteTodayEntry({ exercise, setNumber, timestamp });
+	return json({ ok: true, deleted });
 };

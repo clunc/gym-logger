@@ -57,3 +57,24 @@ export async function appendHistory(entries: HistoryEntry[]): Promise<void> {
 	transaction(entries);
 	db.close();
 }
+
+export async function deleteTodayEntry({
+	exercise,
+	setNumber,
+	timestamp
+}: {
+	exercise: string;
+	setNumber: number;
+	timestamp: string;
+}): Promise<number> {
+	await ensureDbFile();
+	const db = initDb();
+
+	const stmt = db.prepare(
+		`DELETE FROM history WHERE exercise = ? AND setNumber = ? AND timestamp = ?`
+	);
+	const result = stmt.run(exercise, setNumber, timestamp);
+	db.close();
+
+	return result.changes ?? 0;
+}

@@ -24,3 +24,19 @@ export async function appendHistory(entries: HistoryEntry[]): Promise<void> {
 		throw new Error(`Failed to append history (${res.status})`);
 	}
 }
+
+export async function deleteHistoryEntry(entry: {
+	exercise: string;
+	setNumber: number;
+	timestamp: string;
+}): Promise<void> {
+	const res = await fetch(HISTORY_ENDPOINT, {
+		method: 'DELETE',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify({ entry })
+	});
+
+	if (!res.ok) {
+		throw new Error(`Failed to delete history entry (${res.status})`);
+	}
+}
