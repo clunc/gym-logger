@@ -44,6 +44,17 @@ jspm_packages/
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 
+# Build output
+.svelte-kit/
+.output
+.vercel
+.netlify
+.wrangler
+build
+dist
+.next
+out
+
 # TypeScript cache
 *.tsbuildinfo
 
@@ -69,18 +80,11 @@ web_modules/
 .env
 .env.*
 !.env.example
+!.env.test
 
-# parcel-bundler cache (https://parceljs.org/)
+# Parcel cache
 .cache
 .parcel-cache
-
-# Next.js build output
-.next
-out
-
-# Nuxt.js build / generate output
-.nuxt
-dist
 
 # Gatsby files
 .cache/
@@ -94,9 +98,6 @@ dist
 # vuepress v2.x temp and cache directory
 .temp
 .cache
-
-# Sveltekit cache directory
-.svelte-kit/
 
 # vitepress build output
 **/.vitepress/dist
@@ -134,6 +135,10 @@ dist
 !.yarn/sdks
 !.yarn/versions
 
-# Vite logs files
+# OS
+.DS_Store
+Thumbs.db
+
+# Vite log files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
