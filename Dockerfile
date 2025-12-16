@@ -9,8 +9,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-ENV NODE_ENV=production
-
 FROM base AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
