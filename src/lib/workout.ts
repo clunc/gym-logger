@@ -14,24 +14,6 @@ export const workoutTemplate: SessionExercise[] = [
 
 export const todayString = () => new Date().toDateString();
 
-export function loadHistory(): HistoryEntry[] {
-	if (typeof localStorage === 'undefined') return [];
-
-	try {
-		const stored = localStorage.getItem('workoutHistory');
-		const parsed = stored ? JSON.parse(stored) : [];
-		return Array.isArray(parsed) ? parsed : [];
-	} catch (error) {
-		console.error('Failed to load workout history', error);
-		return [];
-	}
-}
-
-export function persistHistory(history: HistoryEntry[]) {
-	if (typeof localStorage === 'undefined') return;
-	localStorage.setItem('workoutHistory', JSON.stringify(history));
-}
-
 export function createSession(history: HistoryEntry[]): SessionExercise[] {
 	const today = todayString();
 

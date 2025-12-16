@@ -3,7 +3,8 @@
 	import ExerciseCard from '$lib/components/ExerciseCard.svelte';
 	import HistoryList from '$lib/components/HistoryList.svelte';
 	import RestTimer from '$lib/components/RestTimer.svelte';
-	import { createSession, loadHistory, persistHistory, REST_SECONDS, todayString, workoutTemplate } from '$lib/workout';
+	import { fetchHistory, saveHistory } from '$lib/api/history';
+	import { createSession, REST_SECONDS, todayString } from '$lib/workout';
 	import type { HistoryEntry, SessionExercise } from '$lib/types';
 
 	let history: HistoryEntry[] = [];
@@ -13,11 +14,18 @@
 	let restTimerInterval: ReturnType<typeof setInterval> | null = null;
 	let restHideTimeout: ReturnType<typeof setTimeout> | null = null;
 	let ready = false;
+	let loadError = '';
 
-	onMount(() => {
-		history = loadHistory();
-		currentSession = createSession(history);
-		ready = true;
+	onMount(async () => {
+		try {
+			history = await fetchHistory();
+		} catch (error) {
+			console.error(error);
+			loadError = 'Could not load history. Changes will not be saved.';
+		} finally {
+			currentSession = createSession(history);
+			ready = true;
+		}
 	});
 
 	onDestroy(() => {
@@ -83,7 +91,12 @@
 		}
 
 		currentSession = [...currentSession];
-		persistHistory(history);
+		if (!loadError) {
+			saveHistory(history).catch((error) => {
+				console.error(error);
+				loadError = 'Could not save history. Changes will not be saved.';
+			});
+		}
 		startRestTimer();
 	}
 
@@ -102,7 +115,12 @@
 		if (index !== -1) {
 			history.splice(index, 1);
 			history = [...history];
-			persistHistory(history);
+			if (!loadError) {
+				saveHistory(history).catch((error) => {
+					console.error(error);
+					loadError = 'Could not save history. Changes will not be saved.';
+				});
+			}
 		}
 
 		set.completed = false;
@@ -164,6 +182,9 @@
 		</div>
 	{:else}
 		<div class="content">
+			{#if loadError}
+				<div class="alert">{loadError}</div>
+			{/if}
 			{#each currentSession as exercise, exerciseIdx}
 				<ExerciseCard
 					{exercise}
@@ -226,5 +247,15 @@
 	.loading {
 		color: #666;
 		text-align: center;
+	}
+
+	.alert {
+		background: #fff4e5;
+		color: #9c4a00;
+		border: 1px solid #ffd7a8;
+		border-radius: 8px;
+		padding: 10px 12px;
+		margin-bottom: 12px;
+		font-size: 14px;
 	}
 </style>
