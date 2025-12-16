@@ -13,14 +13,14 @@ export async function fetchHistory(): Promise<HistoryEntry[]> {
 	return Array.isArray(data.history) ? data.history : [];
 }
 
-export async function saveHistory(history: HistoryEntry[]): Promise<void> {
+export async function appendHistory(entries: HistoryEntry[]): Promise<void> {
 	const res = await fetch(HISTORY_ENDPOINT, {
-		method: 'POST',
+		method: 'PUT',
 		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ history })
+		body: JSON.stringify({ entries })
 	});
 
 	if (!res.ok) {
-		throw new Error(`Failed to save history (${res.status})`);
+		throw new Error(`Failed to append history (${res.status})`);
 	}
 }

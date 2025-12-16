@@ -41,21 +41,19 @@ export async function readHistory(): Promise<HistoryEntry[]> {
 	return rows as HistoryEntry[];
 }
 
-export async function writeHistory(history: HistoryEntry[]): Promise<void> {
+export async function appendHistory(entries: HistoryEntry[]): Promise<void> {
 	await ensureDbFile();
 	const db = initDb();
 	const insert = db.prepare(
 		`INSERT INTO history (exercise, setNumber, weight, reps, timestamp) VALUES (@exercise, @setNumber, @weight, @reps, @timestamp)`
 	);
-	const truncate = db.prepare(`DELETE FROM history`);
 
-	const transaction = db.transaction((entries: HistoryEntry[]) => {
-		truncate.run();
-		for (const entry of entries) {
+	const transaction = db.transaction((toInsert: HistoryEntry[]) => {
+		for (const entry of toInsert) {
 			insert.run(entry);
 		}
 	});
 
-	transaction(history);
+	transaction(entries);
 	db.close();
 }

@@ -3,7 +3,7 @@
 	import ExerciseCard from '$lib/components/ExerciseCard.svelte';
 	import HistoryList from '$lib/components/HistoryList.svelte';
 	import RestTimer from '$lib/components/RestTimer.svelte';
-	import { fetchHistory, saveHistory } from '$lib/api/history';
+	import { appendHistory, fetchHistory } from '$lib/api/history';
 	import { createSession, REST_SECONDS, todayString } from '$lib/workout';
 	import type { HistoryEntry, SessionExercise } from '$lib/types';
 
@@ -61,28 +61,18 @@
 
 		const today = todayString();
 
-		history = history.filter(
-			(h) =>
-				!(
-					h.exercise === exercise.name &&
-					h.setNumber === set.setNumber &&
-					new Date(h.timestamp).toDateString() === today
-				)
-		);
-
 		set.completed = true;
 		set.timestamp = new Date().toISOString();
 
-		history = [
-			{
-				exercise: exercise.name,
-				setNumber: set.setNumber,
-				weight: set.weight,
-				reps: set.reps,
-				timestamp: set.timestamp
-			},
-			...history
-		];
+		const entry: HistoryEntry = {
+			exercise: exercise.name,
+			setNumber: set.setNumber,
+			weight: set.weight,
+			reps: set.reps,
+			timestamp: set.timestamp
+		};
+
+		history = [entry, ...history];
 
 		const nextSet = exercise.sets[setIdx + 1];
 		if (nextSet && !nextSet.completed) {
@@ -92,7 +82,7 @@
 
 		currentSession = [...currentSession];
 		if (!loadError) {
-			saveHistory(history).catch((error) => {
+			appendHistory([entry]).catch((error) => {
 				console.error(error);
 				loadError = 'Could not save history. Changes will not be saved.';
 			});
@@ -115,12 +105,7 @@
 		if (index !== -1) {
 			history.splice(index, 1);
 			history = [...history];
-			if (!loadError) {
-				saveHistory(history).catch((error) => {
-					console.error(error);
-					loadError = 'Could not save history. Changes will not be saved.';
-				});
-			}
+			// Append-only persistence: keep DB entries for audit; UI remains accurate.
 		}
 
 		set.completed = false;

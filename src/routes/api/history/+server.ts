@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { readHistory, writeHistory } from '$lib/server/historyStore';
+import { appendHistory, readHistory } from '$lib/server/historyStore';
 import type { RequestHandler } from './$types';
 import type { HistoryEntry } from '$lib/types';
 
@@ -21,14 +21,14 @@ export const GET: RequestHandler = async () => {
 	return json({ history });
 };
 
-export const POST: RequestHandler = async ({ request }) => {
+export const PUT: RequestHandler = async ({ request }) => {
 	const body = await request.json().catch(() => null);
-	const history = (body as { history?: unknown })?.history;
+	const entries = (body as { entries?: unknown })?.entries;
 
-	if (!Array.isArray(history) || !history.every(isValidEntry)) {
-		return json({ error: 'Invalid history payload' }, { status: 400 });
+	if (!Array.isArray(entries) || !entries.every(isValidEntry)) {
+		return json({ error: 'Invalid entries payload' }, { status: 400 });
 	}
 
-	await writeHistory(history);
+	await appendHistory(entries);
 	return json({ ok: true });
 };
