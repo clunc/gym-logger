@@ -21,6 +21,18 @@
   "containerEnv": {
     "SSH_AUTH_SOCK": "/ssh-agent"
   },
+  "forwardPorts": [
+    5173,
+    4173
+  ],
+  "portsAttributes": {
+    "5173": {
+      "label": "Vite dev server"
+    },
+    "4173": {
+      "label": "Vite preview"
+    }
+  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -46,5 +58,6 @@
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
-  "postCreateCommand": "mkdir -p ~/.claude && claude --version && mkdir -p ~/.codex && codex --version"
+  "postCreateCommand": "bash -lc \"mkdir -p ~/.claude && claude --version && mkdir -p ~/.codex && codex --version && npm install\"",
+  "postAttachCommand": "npm run dev:host"
 }
