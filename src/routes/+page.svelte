@@ -56,11 +56,27 @@
 		currentSession = [...currentSession];
 	}
 
+	function setWeightFromInput(exerciseIdx: number, setIdx: number, value: number | null) {
+		const set = currentSession[exerciseIdx].sets[setIdx];
+		if (set.completed) return;
+
+		set.weight = value === null ? NaN : value;
+		currentSession = [...currentSession];
+	}
+
 	function adjustReps(exerciseIdx: number, setIdx: number, delta: number) {
 		const set = currentSession[exerciseIdx].sets[setIdx];
 		if (set.completed) return;
 
 		set.reps = Math.max(0, (set.reps || 0) + delta);
+		currentSession = [...currentSession];
+	}
+
+	function setRepsFromInput(exerciseIdx: number, setIdx: number, value: number | null) {
+		const set = currentSession[exerciseIdx].sets[setIdx];
+		if (set.completed) return;
+
+		set.reps = value === null ? NaN : value;
 		currentSession = [...currentSession];
 	}
 
@@ -210,6 +226,8 @@
 					{exerciseIdx}
 					onAdjustWeight={adjustWeight}
 					onAdjustReps={adjustReps}
+					onSetWeight={setWeightFromInput}
+					onSetReps={setRepsFromInput}
 					onLogSet={logSet}
 					onUndoSet={undoSet}
 				/>
@@ -231,8 +249,9 @@
 
 	:global(body) {
 		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-		background: #f5f5f5;
-		padding-bottom: 20px;
+		background: linear-gradient(180deg, #f8fbff 0%, #f4f7fb 40%, #eef2f7 100%);
+		padding-bottom: 120px;
+		color: #0f172a;
 	}
 
 	.page {
@@ -240,26 +259,27 @@
 	}
 
 	.navbar {
-		background: #007aff;
-		color: white;
-		padding: 15px 20px;
+		background: #ffffff;
+		color: #0f172a;
+		padding: 14px 20px;
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
 		position: sticky;
 		top: 0;
 		z-index: 100;
-		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+		box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+		border-bottom: 1px solid #e2e8f0;
 	}
 
 	.navbar h1 {
-		font-size: 20px;
-		font-weight: 600;
+		font-size: 19px;
+		font-weight: 700;
 	}
 
 	.content {
-		padding: 15px 8px;
-		max-width: 600px;
+		padding: 16px 12px;
+		max-width: 720px;
 		margin: 0 auto;
 	}
 
@@ -276,5 +296,15 @@
 		padding: 10px 12px;
 		margin-bottom: 12px;
 		font-size: 14px;
+	}
+
+	@media (max-width: 540px) {
+		.navbar h1 {
+			font-size: 17px;
+		}
+
+		.content {
+			padding: 14px 10px;
+		}
 	}
 </style>

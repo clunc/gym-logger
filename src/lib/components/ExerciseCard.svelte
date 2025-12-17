@@ -6,6 +6,8 @@
 	export let exerciseIdx: number;
 	export let onAdjustWeight: (exerciseIdx: number, setIdx: number, delta: number) => void;
 	export let onAdjustReps: (exerciseIdx: number, setIdx: number, delta: number) => void;
+	export let onSetWeight: (exerciseIdx: number, setIdx: number, value: number | null) => void;
+	export let onSetReps: (exerciseIdx: number, setIdx: number, value: number | null) => void;
 	export let onLogSet: (exerciseIdx: number, setIdx: number) => void;
 	export let onUndoSet: (exerciseIdx: number, setIdx: number) => void;
 </script>
@@ -28,6 +30,8 @@
 				{exerciseIdx}
 				{onAdjustWeight}
 				{onAdjustReps}
+				{onSetWeight}
+				{onSetReps}
 				{onLogSet}
 				{onUndoSet}
 			/>
@@ -42,17 +46,23 @@
 		margin-bottom: 15px;
 		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 		overflow: hidden;
+		border: 1px solid #eef1f6;
 	}
 
 	.card-header {
-		padding: 15px;
-		border-bottom: 1px solid #f0f0f0;
+		padding: 14px 16px;
+		border-bottom: 1px solid #f3f4f6;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 8px;
 	}
 
 	.card-title {
 		font-size: 18px;
 		font-weight: 600;
 		margin-bottom: 4px;
+		color: #172133;
 	}
 
 	.card-subtitle {
@@ -61,6 +71,9 @@
 	}
 
 	.card-body {
-		padding: 8px;
+		padding: 8px 12px 4px;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
 	}
 </style>
