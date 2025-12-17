@@ -40,7 +40,7 @@
 		try {
 			const latest = await fetchHistory();
 			history = latest;
-			currentSession = createSession(history);
+			currentSession = mergeInProgressSession(createSession(history));
 		} catch (error) {
 			console.error('Failed to refresh history', error);
 			loadError = 'Could not refresh history from server.';
@@ -190,6 +190,28 @@
 				restTimerStatus = 'warning';
 			}
 		}, 1000);
+	}
+
+	function mergeInProgressSession(newSession: SessionExercise[]): SessionExercise[] {
+		return newSession.map((exercise) => {
+			const current = currentSession.find((e) => e.name === exercise.name);
+			if (!current) return exercise;
+
+			const sets = exercise.sets.map((set) => {
+				const currentSet = current.sets.find((s) => s.setNumber === set.setNumber);
+				if (!currentSet) return set;
+
+				if (!set.completed && !currentSet.completed) {
+					const weight = Number.isFinite(currentSet.weight) ? currentSet.weight : set.weight;
+					const reps = Number.isFinite(currentSet.reps) ? currentSet.reps : set.reps;
+					return { ...set, weight, reps };
+				}
+
+				return set;
+			});
+
+			return { ...exercise, sets };
+		});
 	}
 
 	$: todaysHistory = history.filter(
