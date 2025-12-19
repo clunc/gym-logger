@@ -227,6 +227,9 @@
 		(entry) => new Date(entry.timestamp).toDateString() === todayString()
 	);
 
+	const WEEKLY_STREAK_TARGET = 2;
+	const WEEKLY_PLANNED_WORKOUTS = 3;
+
 	const dateKey = (timestamp: string) => new Date(timestamp).toDateString();
 	const startOfWeek = (date: Date) => {
 		const copy = new Date(date);
@@ -263,7 +266,7 @@
 		const today = new Date();
 		const thisWeekKey = weekKey(today);
 		const thisWeekCount = weekCounts.get(thisWeekKey) || 0;
-		weeklyTargetMet = thisWeekCount >= 3;
+		weeklyTargetMet = thisWeekCount >= WEEKLY_STREAK_TARGET;
 
 		const orderedDates = Array.from(dateSet)
 			.map((value) => new Date(value))
@@ -275,7 +278,7 @@
 			const key = cursor.toDateString();
 			if (!dateSet.has(key)) break;
 
-			const weekOk = (weekCounts.get(weekKey(cursor)) || 0) >= 3;
+			const weekOk = (weekCounts.get(weekKey(cursor)) || 0) >= WEEKLY_STREAK_TARGET;
 			if (!weekOk) break;
 
 			count += 1;
@@ -300,7 +303,7 @@
 			weekCursor.setDate(weekCursor.getDate() + 7);
 		}
 		const uniqueWeeks = Array.from(new Set(weeks));
-		monthlyPlannedWorkouts = uniqueWeeks.length * 3;
+		monthlyPlannedWorkouts = uniqueWeeks.length * WEEKLY_PLANNED_WORKOUTS;
 		monthlyAccordance =
 			monthlyPlannedWorkouts === 0
 				? 0
@@ -355,7 +358,7 @@
 						{streakCount} day{streakCount === 1 ? '' : 's'}
 					</div>
 					<div class="card-sub">
-						{weeklyTargetMet ? 'Weekly rule met (3+ workouts)' : 'Hit 3 workouts to protect streak'}
+						{weeklyTargetMet ? 'Weekly rule met (2+ workouts)' : 'Hit 2 workouts to protect streak'}
 					</div>
 				</div>
 				<div class="summary-card">
