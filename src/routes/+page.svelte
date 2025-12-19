@@ -225,12 +225,12 @@
 </script>
 
 <svelte:head>
-	<title>Training Logger</title>
+	<title>Gym Logger</title>
 </svelte:head>
 
 <div class="page">
 	<nav class="navbar">
-		<h1>💪 Training Logger</h1>
+		<h1>💪 Gym Logger</h1>
 	</nav>
 
 	{#if !ready}
