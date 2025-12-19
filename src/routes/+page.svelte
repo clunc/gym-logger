@@ -20,9 +20,11 @@
 	let completedHolds = 0;
 	let todayProgress = 0;
 	let streakCount = 0;
+	let weeklyTargetMet = false;
 	let hasToday = false;
 	let monthlyAccordance = 0;
-	let monthlyDaysTracked = 0;
+	let monthlyPlannedWorkouts = 0;
+	let monthlyWorkouts = 0;
 
 	onMount(async () => {
 		try {
@@ -226,32 +228,16 @@
 	);
 
 	const dateKey = (timestamp: string) => new Date(timestamp).toDateString();
+	const startOfWeek = (date: Date) => {
+		const copy = new Date(date);
+		const day = copy.getDay();
+		const diffToMonday = (day + 6) % 7;
+		copy.setHours(0, 0, 0, 0);
+		copy.setDate(copy.getDate() - diffToMonday);
+		return copy;
+	};
 
-	function calculateStreak(dateSet: Set<string>) {
-		if (dateSet.size === 0) {
-			return { streak: 0, hasToday: false };
-		}
-
-		const orderedDates = Array.from(dateSet)
-			.map((value) => new Date(value))
-			.sort((a, b) => b.getTime() - a.getTime());
-
-		let count = 0;
-		let cursor = orderedDates[0];
-
-		while (true) {
-			const key = cursor.toDateString();
-			if (!dateSet.has(key)) break;
-
-			count += 1;
-
-			const previous = new Date(cursor);
-			previous.setDate(cursor.getDate() - 1);
-			cursor = previous;
-		}
-
-		return { streak: count, hasToday: dateSet.has(todayString()) };
-	}
+	const weekKey = (date: Date) => startOfWeek(date).toDateString();
 
 	$: {
 		const allSets = currentSession.flatMap((exercise) => exercise.sets);
@@ -266,23 +252,59 @@
 			return set;
 		}, new Set<string>());
 
-		const streakInfo = calculateStreak(dateSet);
-		streakCount = streakInfo.streak;
-		hasToday = streakInfo.hasToday;
+		hasToday = dateSet.has(todayString());
 
-		const now = new Date();
-		const month = now.getMonth();
-		const year = now.getFullYear();
+		const weekCounts = Array.from(dateSet).reduce((map, day) => {
+			const key = weekKey(new Date(day));
+			map.set(key, (map.get(key) || 0) + 1);
+			return map;
+		}, new Map<string, number>());
+
+		const today = new Date();
+		const thisWeekKey = weekKey(today);
+		const thisWeekCount = weekCounts.get(thisWeekKey) || 0;
+		weeklyTargetMet = thisWeekCount >= 3;
+
+		const orderedDates = Array.from(dateSet)
+			.map((value) => new Date(value))
+			.sort((a, b) => b.getTime() - a.getTime());
+
+		let count = 0;
+		let cursor = orderedDates[0];
+		while (cursor && true) {
+			const key = cursor.toDateString();
+			if (!dateSet.has(key)) break;
+
+			const weekOk = (weekCounts.get(weekKey(cursor)) || 0) >= 3;
+			if (!weekOk) break;
+
+			count += 1;
+			const previous = new Date(cursor);
+			previous.setDate(cursor.getDate() - 1);
+			cursor = previous;
+		}
+		streakCount = count;
+
+		const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
 		const monthDates = Array.from(dateSet).filter((key) => {
 			const date = new Date(key);
-			return date.getMonth() === month && date.getFullYear() === year;
+			return date.getMonth() === monthStart.getMonth() && date.getFullYear() === monthStart.getFullYear();
 		});
 
-		monthlyDaysTracked = monthDates.length;
+		monthlyWorkouts = monthDates.length;
 
-		const daysElapsed = now.getDate();
+		const weeks: string[] = [];
+		let weekCursor = new Date(startOfWeek(monthStart));
+		while (weekCursor <= today) {
+			weeks.push(weekKey(weekCursor));
+			weekCursor.setDate(weekCursor.getDate() + 7);
+		}
+		const uniqueWeeks = Array.from(new Set(weeks));
+		monthlyPlannedWorkouts = uniqueWeeks.length * 3;
 		monthlyAccordance =
-			daysElapsed === 0 ? 0 : Math.round((monthlyDaysTracked / daysElapsed) * 100);
+			monthlyPlannedWorkouts === 0
+				? 0
+				: Math.round((monthlyWorkouts / monthlyPlannedWorkouts) * 100);
 	}
 
 	$: restTimerLabel =
@@ -299,8 +321,8 @@
 	<nav class="navbar">
 		<h1>💪 Gym Logger</h1>
 		<div class="nav-badges">
-			<div class={`pill streak ${hasToday ? 'on' : 'off'}`}>
-				<span class="pill-icon">{hasToday ? '🔥' : '🕯️'}</span>
+			<div class={`pill streak ${weeklyTargetMet ? 'on' : 'off'}`}>
+				<span class="pill-icon">{weeklyTargetMet ? '🔥' : '🕯️'}</span>
 				<span class="pill-text">{streakCount} day{streakCount === 1 ? '' : 's'} streak</span>
 			</div>
 			<div class="pill neutral">
@@ -332,12 +354,16 @@
 					<div class="card-value">
 						{streakCount} day{streakCount === 1 ? '' : 's'}
 					</div>
-					<div class="card-sub">{hasToday ? 'On fire' : 'Finish today to keep it lit'}</div>
+					<div class="card-sub">
+						{weeklyTargetMet ? 'Weekly rule met (3+ workouts)' : 'Hit 3 workouts to protect streak'}
+					</div>
 				</div>
 				<div class="summary-card">
 					<div class="card-label">Monthly Accordance</div>
 					<div class="card-value">{monthlyAccordance}%</div>
-					<div class="card-sub">This month so far</div>
+					<div class="card-sub">
+						{monthlyWorkouts} / {monthlyPlannedWorkouts} planned workouts
+					</div>
 				</div>
 			</div>
 			{#each currentSession as exercise, exerciseIdx}
