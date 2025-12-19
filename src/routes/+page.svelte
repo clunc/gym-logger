@@ -16,6 +16,13 @@
 	let pollInterval: ReturnType<typeof setInterval> | null = null;
 	let ready = false;
 	let loadError = '';
+	let totalHolds = 0;
+	let completedHolds = 0;
+	let todayProgress = 0;
+	let streakCount = 0;
+	let hasToday = false;
+	let monthlyAccordance = 0;
+	let monthlyDaysTracked = 0;
 
 	onMount(async () => {
 		try {
@@ -218,6 +225,66 @@
 		(entry) => new Date(entry.timestamp).toDateString() === todayString()
 	);
 
+	const dateKey = (timestamp: string) => new Date(timestamp).toDateString();
+
+	function calculateStreak(dateSet: Set<string>) {
+		if (dateSet.size === 0) {
+			return { streak: 0, hasToday: false };
+		}
+
+		const orderedDates = Array.from(dateSet)
+			.map((value) => new Date(value))
+			.sort((a, b) => b.getTime() - a.getTime());
+
+		let count = 0;
+		let cursor = orderedDates[0];
+
+		while (true) {
+			const key = cursor.toDateString();
+			if (!dateSet.has(key)) break;
+
+			count += 1;
+
+			const previous = new Date(cursor);
+			previous.setDate(cursor.getDate() - 1);
+			cursor = previous;
+		}
+
+		return { streak: count, hasToday: dateSet.has(todayString()) };
+	}
+
+	$: {
+		const allSets = currentSession.flatMap((exercise) => exercise.sets);
+		completedHolds = allSets.filter((set) => set.completed).length;
+		totalHolds = allSets.length;
+		todayProgress = totalHolds === 0 ? 0 : Math.round((completedHolds / totalHolds) * 100);
+	}
+
+	$: {
+		const dateSet = history.reduce((set, entry) => {
+			set.add(dateKey(entry.timestamp));
+			return set;
+		}, new Set<string>());
+
+		const streakInfo = calculateStreak(dateSet);
+		streakCount = streakInfo.streak;
+		hasToday = streakInfo.hasToday;
+
+		const now = new Date();
+		const month = now.getMonth();
+		const year = now.getFullYear();
+		const monthDates = Array.from(dateSet).filter((key) => {
+			const date = new Date(key);
+			return date.getMonth() === month && date.getFullYear() === year;
+		});
+
+		monthlyDaysTracked = monthDates.length;
+
+		const daysElapsed = now.getDate();
+		monthlyAccordance =
+			daysElapsed === 0 ? 0 : Math.round((monthlyDaysTracked / daysElapsed) * 100);
+	}
+
 	$: restTimerLabel =
 		restTimerStatus === 'done'
 			? 'Ready!'
@@ -231,6 +298,16 @@
 <div class="page">
 	<nav class="navbar">
 		<h1>💪 Gym Logger</h1>
+		<div class="nav-badges">
+			<div class={`pill streak ${hasToday ? 'on' : 'off'}`}>
+				<span class="pill-icon">{hasToday ? '🔥' : '🕯️'}</span>
+				<span class="pill-text">{streakCount} day{streakCount === 1 ? '' : 's'} streak</span>
+			</div>
+			<div class="pill neutral">
+				<span class="pill-icon">📅</span>
+				<span class="pill-text">{monthlyAccordance}% month</span>
+			</div>
+		</div>
 	</nav>
 
 	{#if !ready}
@@ -242,6 +319,27 @@
 			{#if loadError}
 				<div class="alert">{loadError}</div>
 			{/if}
+			<div class="summary-cards">
+				<div class="summary-card">
+					<div class="card-label">Today</div>
+					<div class="card-value">{todayProgress}%</div>
+					<div class="card-sub">
+						{completedHolds} / {totalHolds} holds
+					</div>
+				</div>
+				<div class="summary-card">
+					<div class="card-label">Streak</div>
+					<div class="card-value">
+						{streakCount} day{streakCount === 1 ? '' : 's'}
+					</div>
+					<div class="card-sub">{hasToday ? 'On fire' : 'Finish today to keep it lit'}</div>
+				</div>
+				<div class="summary-card">
+					<div class="card-label">Monthly Accordance</div>
+					<div class="card-value">{monthlyAccordance}%</div>
+					<div class="card-sub">This month so far</div>
+				</div>
+			</div>
 			{#each currentSession as exercise, exerciseIdx}
 				<ExerciseCard
 					{exercise}
@@ -299,6 +397,53 @@
 		font-weight: 700;
 	}
 
+	.nav-badges {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+
+	.pill {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 12px;
+		border-radius: 999px;
+		font-size: 13px;
+		font-weight: 600;
+		background: #e2e8f0;
+		color: #334155;
+		box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+		border: 1px solid rgba(148, 163, 184, 0.4);
+	}
+
+	.pill.streak.on {
+		background: #fff4e5;
+		color: #b45309;
+		border-color: #fed7aa;
+	}
+
+	.pill.streak.off {
+		background: #e2e8f0;
+		color: #475569;
+		border-color: #cbd5e1;
+	}
+
+	.pill.neutral {
+		background: #eef2ff;
+		color: #4338ca;
+		border-color: #c7d2fe;
+	}
+
+	.pill-icon {
+		font-size: 16px;
+		line-height: 1;
+	}
+
+	.pill-text {
+		line-height: 1.1;
+	}
+
 	.content {
 		padding: 16px 12px;
 		max-width: 720px;
@@ -320,9 +465,55 @@
 		font-size: 14px;
 	}
 
+	.summary-cards {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+		gap: 12px;
+		margin: 14px 0 18px;
+	}
+
+	.summary-card {
+		background: #ffffff;
+		border: 1px solid #e2e8f0;
+		border-radius: 14px;
+		padding: 14px 16px;
+		box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+	}
+
+	.card-label {
+		color: #475569;
+		font-size: 13px;
+		font-weight: 600;
+		margin-bottom: 6px;
+	}
+
+	.card-value {
+		font-size: 28px;
+		font-weight: 800;
+		color: #0f172a;
+	}
+
+	.card-sub {
+		color: #64748b;
+		font-size: 13px;
+		margin-top: 4px;
+	}
+
 	@media (max-width: 540px) {
 		.navbar h1 {
 			font-size: 17px;
+		}
+
+		.navbar {
+			flex-direction: column;
+			align-items: flex-start;
+			gap: 8px;
+		}
+
+		.nav-badges {
+			width: 100%;
+			justify-content: flex-start;
+			flex-wrap: wrap;
 		}
 
 		.content {
