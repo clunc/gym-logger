@@ -7,7 +7,12 @@ const isValidEntry = (entry: unknown): entry is HistoryEntry => {
 	if (!entry || typeof entry !== 'object') return false;
 
 	const candidate = entry as Record<string, unknown>;
+	const type = candidate.type;
+	const isValidType =
+		type === undefined || type === 'workout' || type === 'sick';
+
 	return (
+		isValidType &&
 		typeof candidate.exercise === 'string' &&
 		typeof candidate.setNumber === 'number' &&
 		typeof candidate.weight === 'number' &&

@@ -11,10 +11,18 @@
 		{#each entries as entry}
 			<article class="history-card">
 				<div class="history-header">
-					<span class="history-exercise">{entry.exercise} - Set {entry.setNumber}</span>
+					{#if (entry.type ?? 'workout') === 'sick'}
+						<span class="history-exercise sick">🤒 Sick Day</span>
+					{:else}
+						<span class="history-exercise">{entry.exercise} - Set {entry.setNumber}</span>
+					{/if}
 					<span class="history-date">{formatTimestamp(entry.timestamp)}</span>
 				</div>
-				<div class="history-set">{entry.weight} kg × {entry.reps} reps</div>
+				{#if (entry.type ?? 'workout') === 'sick'}
+					<div class="history-set sick-note">Counts toward plan</div>
+				{:else}
+					<div class="history-set">{entry.weight} kg × {entry.reps} reps</div>
+				{/if}
 			</article>
 		{/each}
 	</section>
@@ -53,6 +61,10 @@
 		color: #333;
 	}
 
+	.history-exercise.sick {
+		color: #b91c1c;
+	}
+
 	.history-date {
 		font-size: 13px;
 		color: #999;
@@ -62,6 +74,11 @@
 		font-size: 14px;
 		color: #666;
 		padding: 4px 0;
+	}
+
+	.history-set.sick-note {
+		color: #b91c1c;
+		font-weight: 600;
 	}
 
 	@media (max-width: 540px) {

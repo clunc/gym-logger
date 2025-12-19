@@ -1,4 +1,5 @@
 export type HistoryEntry = {
+	type?: 'workout' | 'sick';
 	exercise: string;
 	setNumber: number;
 	weight: number;

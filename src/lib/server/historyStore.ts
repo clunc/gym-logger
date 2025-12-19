@@ -18,6 +18,7 @@ function initDb() {
 	db.pragma('journal_mode = WAL');
 	db.exec(`
 		CREATE TABLE IF NOT EXISTS history (
+			type TEXT NOT NULL DEFAULT 'workout',
 			exercise TEXT NOT NULL,
 			setNumber INTEGER NOT NULL,
 			weight REAL NOT NULL,
@@ -26,6 +27,13 @@ function initDb() {
 			PRIMARY KEY (exercise, setNumber, timestamp)
 		)
 	`);
+
+	const columns = db.prepare(`PRAGMA table_info(history)`).all() as { name: string }[];
+	const hasType = columns.some((col) => col.name === 'type');
+	if (!hasType) {
+		db.exec(`ALTER TABLE history ADD COLUMN type TEXT NOT NULL DEFAULT 'workout'`);
+	}
+
 	return db;
 }
 
@@ -34,7 +42,7 @@ export async function readHistory(): Promise<HistoryEntry[]> {
 	const db = initDb();
 	const rows = db
 		.prepare(
-			`SELECT exercise, setNumber, weight, reps, timestamp FROM history ORDER BY datetime(timestamp) DESC`
+			`SELECT type, exercise, setNumber, weight, reps, timestamp FROM history ORDER BY datetime(timestamp) DESC`
 		)
 		.all();
 	db.close();
@@ -45,12 +53,12 @@ export async function appendHistory(entries: HistoryEntry[]): Promise<void> {
 	await ensureDbFile();
 	const db = initDb();
 	const insert = db.prepare(
-		`INSERT INTO history (exercise, setNumber, weight, reps, timestamp) VALUES (@exercise, @setNumber, @weight, @reps, @timestamp)`
+		`INSERT INTO history (type, exercise, setNumber, weight, reps, timestamp) VALUES (@type, @exercise, @setNumber, @weight, @reps, @timestamp)`
 	);
 
 	const transaction = db.transaction((toInsert: HistoryEntry[]) => {
 		for (const entry of toInsert) {
-			insert.run(entry);
+			insert.run({ ...entry, type: entry.type ?? 'workout' });
 		}
 	});
 

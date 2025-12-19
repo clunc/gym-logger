@@ -25,7 +25,7 @@
 	let monthlyAccordance = 0;
 	let monthlyPlannedWorkouts = 0;
 	let monthlyWorkouts = 0;
-	let sickDays: string[] = [];
+	let todaySickEntry: HistoryEntry | undefined;
 
 	onMount(async () => {
 		try {
@@ -224,19 +224,72 @@
 		});
 	}
 
-	function toggleSickDay() {
-		const today = todayString();
-		sickDays = sickDays.includes(today)
-			? sickDays.filter((d) => d !== today)
-			: [...sickDays, today];
-	}
-
 	$: todaysHistory = history.filter(
 		(entry) => new Date(entry.timestamp).toDateString() === todayString()
 	);
 
+	$: todaySickEntry = history.find(
+		(entry) =>
+			(entry.type ?? 'workout') === 'sick' &&
+			new Date(entry.timestamp).toDateString() === todayString()
+	);
+
+	async function logSickDay() {
+		if (todaySickEntry) return;
+		const entry: HistoryEntry = {
+			type: 'sick',
+			exercise: SICK_EXERCISE,
+			setNumber: 0,
+			weight: 0,
+			reps: 0,
+			timestamp: new Date().toISOString()
+		};
+
+		history = [entry, ...history];
+
+		if (!loadError) {
+			try {
+				await appendHistory([entry]);
+				await syncHistory();
+			} catch (error) {
+				console.error(error);
+				loadError = 'Could not save sick day. Changes will not be saved.';
+			}
+		}
+	}
+
+	async function undoSickDay() {
+		if (!todaySickEntry) return;
+
+		try {
+			await deleteHistoryEntry({
+				exercise: todaySickEntry.exercise,
+				setNumber: todaySickEntry.setNumber,
+				timestamp: todaySickEntry.timestamp
+			});
+		} catch (error) {
+			console.error(error);
+			loadError = 'Could not delete sick day. History remains unchanged.';
+			return;
+		}
+
+		history = history.filter(
+			(h) =>
+				!(
+					h.exercise === todaySickEntry?.exercise &&
+					h.setNumber === todaySickEntry?.setNumber &&
+					h.timestamp === todaySickEntry?.timestamp
+				)
+		);
+
+		if (!loadError) {
+			await syncHistory();
+		}
+	}
+
 	const WEEKLY_STREAK_TARGET = 2;
 	const WEEKLY_PLANNED_WORKOUTS = 3;
+	const SICK_EXERCISE = 'Sick Day';
 
 	const dateKey = (timestamp: string) => new Date(timestamp).toDateString();
 	const startOfWeek = (date: Date) => {
@@ -261,7 +314,7 @@
 		const dateSet = history.reduce((set, entry) => {
 			set.add(dateKey(entry.timestamp));
 			return set;
-		}, new Set<string>(sickDays));
+		}, new Set<string>());
 
 		hasToday = dateSet.has(todayString());
 
@@ -353,8 +406,8 @@
 				<div class="alert">{loadError}</div>
 			{/if}
 			<div class="sick-row">
-				<button class={`sick-button ${sickDays.includes(todayString()) ? 'active' : ''}`} on:click={toggleSickDay}>
-					{#if sickDays.includes(todayString())}
+				<button class={`sick-button ${todaySickEntry ? 'active' : ''}`} on:click={todaySickEntry ? undoSickDay : logSickDay}>
+					{#if todaySickEntry}
 						🤒 Sick leave active
 					{:else}
 						🚑 Mark today as sick leave
@@ -376,7 +429,7 @@
 						{streakCount} day{streakCount === 1 ? '' : 's'}
 					</div>
 					<div class="card-sub">
-						{weeklyTargetMet ? 'Weekly rule met (2+ workouts)' : 'Hit 2 workouts to protect streak'}
+						{weeklyTargetMet ? 'Weekly rule met (2+ days logged)' : 'Log 2 days to protect streak'}
 					</div>
 				</div>
 				<div class="summary-card">

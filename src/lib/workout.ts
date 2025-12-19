@@ -16,15 +16,16 @@ export const todayString = () => new Date().toDateString();
 
 export function createSession(history: HistoryEntry[]): SessionExercise[] {
 	const today = todayString();
+	const workoutHistory = history.filter((h) => (h.type ?? 'workout') === 'workout');
 
 	const cloneSet = (template: SessionExercise): SessionExercise => {
-		const lastLogged = history.find((h) => h.exercise === template.name);
+		const lastLogged = workoutHistory.find((h) => h.exercise === template.name);
 		const defaultWeight = lastLogged ? lastLogged.weight : template.defaultWeight;
 		const defaultReps = lastLogged ? lastLogged.reps : template.defaultReps;
 
 		const sets: SetEntry[] = Array.from({ length: SETS_PER_EXERCISE }, (_, idx) => {
 			const setNumber = idx + 1;
-			const todaysLog = history.find(
+			const todaysLog = workoutHistory.find(
 				(h) =>
 					h.exercise === template.name &&
 					h.setNumber === setNumber &&
