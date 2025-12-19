@@ -25,6 +25,7 @@
 	let monthlyAccordance = 0;
 	let monthlyPlannedWorkouts = 0;
 	let monthlyWorkouts = 0;
+	let sickDays: string[] = [];
 
 	onMount(async () => {
 		try {
@@ -223,6 +224,13 @@
 		});
 	}
 
+	function toggleSickDay() {
+		const today = todayString();
+		sickDays = sickDays.includes(today)
+			? sickDays.filter((d) => d !== today)
+			: [...sickDays, today];
+	}
+
 	$: todaysHistory = history.filter(
 		(entry) => new Date(entry.timestamp).toDateString() === todayString()
 	);
@@ -253,7 +261,7 @@
 		const dateSet = history.reduce((set, entry) => {
 			set.add(dateKey(entry.timestamp));
 			return set;
-		}, new Set<string>());
+		}, new Set<string>(sickDays));
 
 		hasToday = dateSet.has(todayString());
 
@@ -344,6 +352,16 @@
 			{#if loadError}
 				<div class="alert">{loadError}</div>
 			{/if}
+			<div class="sick-row">
+				<button class={`sick-button ${sickDays.includes(todayString()) ? 'active' : ''}`} on:click={toggleSickDay}>
+					{#if sickDays.includes(todayString())}
+						🤒 Sick leave active
+					{:else}
+						🚑 Mark today as sick leave
+					{/if}
+				</button>
+				<div class="sick-hint">Sick days count toward streak and accordance plans.</div>
+			</div>
 			<div class="summary-cards">
 				<div class="summary-card">
 					<div class="card-label">Today</div>
@@ -492,6 +510,42 @@
 		padding: 10px 12px;
 		margin-bottom: 12px;
 		font-size: 14px;
+	}
+
+	.sick-row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin: 6px 0 10px;
+		flex-wrap: wrap;
+	}
+
+	.sick-button {
+		border: 1px solid #cbd5e1;
+		background: #ffffff;
+		border-radius: 10px;
+		padding: 10px 12px;
+		font-weight: 700;
+		color: #0f172a;
+		cursor: pointer;
+		box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+		transition: transform 0.05s ease, box-shadow 0.1s ease;
+	}
+
+	.sick-button:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+	}
+
+	.sick-button.active {
+		background: #fef2f2;
+		border-color: #fecdd3;
+		color: #b91c1c;
+	}
+
+	.sick-hint {
+		color: #64748b;
+		font-size: 13px;
 	}
 
 	.summary-cards {
