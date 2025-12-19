@@ -405,16 +405,6 @@
 			{#if loadError}
 				<div class="alert">{loadError}</div>
 			{/if}
-			<div class="sick-row">
-				<button class={`sick-button ${todaySickEntry ? 'active' : ''}`} on:click={todaySickEntry ? undoSickDay : logSickDay}>
-					{#if todaySickEntry}
-						🤒 Sick leave active
-					{:else}
-						🚑 Mark today as sick leave
-					{/if}
-				</button>
-				<div class="sick-hint">Sick days count toward streak and accordance plans.</div>
-			</div>
 			<div class="summary-cards">
 				<div class="summary-card">
 					<div class="card-label">Today</div>
@@ -454,6 +444,15 @@
 			{/each}
 
 			<HistoryList entries={todaysHistory} />
+			<div class="sick-row">
+				<button class={`sick-button ${todaySickEntry ? 'active' : ''}`} on:click={todaySickEntry ? undoSickDay : logSickDay}>
+					{#if todaySickEntry}
+						🤒 Sick leave active
+					{:else}
+						🚑 Mark today as sick leave
+					{/if}
+				</button>
+			</div>
 		</div>
 	{/if}
 
@@ -567,10 +566,8 @@
 
 	.sick-row {
 		display: flex;
-		align-items: center;
-		gap: 10px;
+		justify-content: flex-end;
 		margin: 6px 0 10px;
-		flex-wrap: wrap;
 	}
 
 	.sick-button {
@@ -583,6 +580,8 @@
 		cursor: pointer;
 		box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
 		transition: transform 0.05s ease, box-shadow 0.1s ease;
+		width: 100%;
+		text-align: center;
 	}
 
 	.sick-button:hover {
@@ -594,11 +593,6 @@
 		background: #fef2f2;
 		border-color: #fecdd3;
 		color: #b91c1c;
-	}
-
-	.sick-hint {
-		color: #64748b;
-		font-size: 13px;
 	}
 
 	.summary-cards {
