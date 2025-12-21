@@ -4,8 +4,14 @@
 	import HistoryList from '$lib/components/HistoryList.svelte';
 	import RestTimer from '$lib/components/RestTimer.svelte';
 	import { appendHistory, deleteHistoryEntry, fetchHistory } from '$lib/api/history';
-	import { createSession, REST_SECONDS, todayString } from '$lib/workout';
-	import type { HistoryEntry, SessionExercise } from '$lib/types';
+	import {
+		createSession,
+		getNextSessionProgression,
+		REST_SECONDS,
+		todayString,
+		workoutTemplate
+	} from '$lib/workout';
+	import type { HistoryEntry, ProgressionAdvice, SessionExercise } from '$lib/types';
 
 	let history: HistoryEntry[] = [];
 	let currentSession: SessionExercise[] = [];
@@ -26,6 +32,15 @@
 	let monthlyPlannedWorkouts = 0;
 	let monthlyWorkouts = 0;
 	let todaySickEntry: HistoryEntry | undefined;
+	let nextProgressions: (ProgressionAdvice | null)[] = [];
+
+	function computeNextProgressions() {
+		return currentSession.map((exercise) => {
+			const template = workoutTemplate.find((t) => t.name === exercise.name);
+			if (!template) return null;
+			return getNextSessionProgression(template, history);
+		});
+	}
 
 	onMount(async () => {
 		try {
@@ -222,6 +237,13 @@
 
 			return { ...exercise, sets };
 		});
+	}
+
+	$: {
+		// fallback reactive update to catch any other state changes
+		currentSession;
+		history;
+		nextProgressions = computeNextProgressions();
 	}
 
 	$: todaysHistory = history.filter(
@@ -434,6 +456,7 @@
 				<ExerciseCard
 					{exercise}
 					{exerciseIdx}
+					nextProgression={nextProgressions[exerciseIdx]}
 					onAdjustWeight={adjustWeight}
 					onAdjustReps={adjustReps}
 					onSetWeight={setWeightFromInput}

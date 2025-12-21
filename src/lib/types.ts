@@ -20,4 +20,16 @@ export type SessionExercise = {
 	sets: SetEntry[];
 	defaultWeight: number;
 	defaultReps: number;
+	progression?: ProgressionAdvice;
+};
+
+export type ProgressionAdvice = {
+	action: 'increase' | 'maintain' | 'decrease';
+	message: string;
+	previousWeight: number;
+	suggestedWeight: number;
+	consecutiveHigh?: number;
+	consecutiveLow?: number;
+	recentHigh?: boolean;
+	recentLow?: boolean;
 };
