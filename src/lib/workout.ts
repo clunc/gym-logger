@@ -105,18 +105,14 @@ export function computeProgression(
 
 	const repRange = getRepRange(template.name);
 	const latestEntry = exerciseHistory[0];
-	const defaultReps = clamp(
-		latestEntry ? latestEntry.reps : template.defaultReps,
-		repRange.lower,
-		repRange.upper
-	);
+	const lastReps = latestEntry ? latestEntry.reps : template.defaultReps;
 
 	const todaysEntry = exerciseHistory.find((h) => new Date(h.timestamp).toDateString() === today);
 	if (todaysEntry) {
 		const weight = todaysEntry.weight;
 		return {
 			baseWeight: weight,
-			defaultReps,
+			defaultReps: clamp(lastReps, repRange.lower, repRange.upper),
 			progression: {
 				action: 'maintain',
 				message: "Continuing today's session with the same load.",
@@ -175,6 +171,17 @@ export function computeProgression(
 			suggestedWeight: baseWeight
 		};
 	}
+
+	const defaultReps = (() => {
+		if (advice.action === 'increase') return repRange.lower;
+		if (advice.action === 'decrease') return repRange.upper;
+		const repSource =
+			latestComplete?.maxReps ??
+			latestComplete?.minReps ??
+			lastReps ??
+			template.defaultReps;
+		return clamp(repSource, repRange.lower, repRange.upper);
+	})();
 
 	return { baseWeight: advice.suggestedWeight, defaultReps, progression: advice };
 }
