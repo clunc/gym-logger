@@ -56,6 +56,13 @@
 			syncRestTimerFromHistory();
 			ready = true;
 			pollInterval = setInterval(syncHistory, 15000);
+			if (typeof document !== 'undefined') {
+				document.addEventListener('visibilitychange', updateRestTimerFromClock);
+			}
+			if (typeof window !== 'undefined') {
+				window.addEventListener('focus', updateRestTimerFromClock);
+				window.addEventListener('pageshow', updateRestTimerFromClock);
+			}
 		}
 	});
 
@@ -63,6 +70,13 @@
 		if (restTimerInterval) clearInterval(restTimerInterval);
 		if (restHideTimeout) clearTimeout(restHideTimeout);
 		if (pollInterval) clearInterval(pollInterval);
+		if (typeof document !== 'undefined') {
+			document.removeEventListener('visibilitychange', updateRestTimerFromClock);
+		}
+		if (typeof window !== 'undefined') {
+			window.removeEventListener('focus', updateRestTimerFromClock);
+			window.removeEventListener('pageshow', updateRestTimerFromClock);
+		}
 	});
 
 	async function syncHistory() {
