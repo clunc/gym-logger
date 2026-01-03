@@ -16,6 +16,7 @@
 	let history: HistoryEntry[] = [];
 	let currentSession: SessionExercise[] = [];
 	let restTimeRemaining = REST_SECONDS;
+	let restTimerEnd: number | null = null;
 	let restTimerStatus: 'idle' | 'active' | 'warning' | 'done' = 'idle';
 	let restTimerInterval: ReturnType<typeof setInterval> | null = null;
 	let restHideTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -50,6 +51,7 @@
 			loadError = 'Could not load history. Changes will not be saved.';
 		} finally {
 			currentSession = createSession(history);
+			restoreRestTimer();
 			ready = true;
 			pollInterval = setInterval(syncHistory, 15000);
 		}
@@ -188,33 +190,80 @@
 		}
 	}
 
+	const REST_TIMER_STORAGE_KEY = 'gym-logger/rest-timer-end';
+
+	function clearRestTimerStorage() {
+		if (typeof localStorage === 'undefined') return;
+		localStorage.removeItem(REST_TIMER_STORAGE_KEY);
+	}
+
+	function updateRestTimerFromClock() {
+		if (!restTimerEnd) return;
+
+		const remainingMs = restTimerEnd - Date.now();
+		restTimeRemaining = Math.max(0, Math.round(remainingMs / 1000));
+
+		if (remainingMs <= 0) {
+			restTimeRemaining = 0;
+			restTimerStatus = 'done';
+			restTimerEnd = null;
+
+			if (restTimerInterval) {
+				clearInterval(restTimerInterval);
+				restTimerInterval = null;
+			}
+			clearRestTimerStorage();
+
+			if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+				navigator.vibrate([200, 100, 200]);
+			}
+
+			if (restHideTimeout) clearTimeout(restHideTimeout);
+			restHideTimeout = setTimeout(() => {
+				restTimerStatus = 'idle';
+			}, 3000);
+
+			return;
+		}
+
+		restTimerStatus = restTimeRemaining <= 10 ? 'warning' : 'active';
+	}
+
+	function restoreRestTimer() {
+		if (typeof localStorage === 'undefined') return;
+		const stored = localStorage.getItem(REST_TIMER_STORAGE_KEY);
+		if (!stored) return;
+
+		const parsed = Number(stored);
+		if (!Number.isFinite(parsed)) {
+			clearRestTimerStorage();
+			return;
+		}
+
+		restTimerEnd = parsed;
+		updateRestTimerFromClock();
+
+		if (restTimerStatus === 'done') return;
+
+		if (restTimerInterval) clearInterval(restTimerInterval);
+		restTimerInterval = setInterval(updateRestTimerFromClock, 1000);
+	}
+
 	function startRestTimer() {
 		if (restTimerInterval) clearInterval(restTimerInterval);
 		if (restHideTimeout) clearTimeout(restHideTimeout);
 
-		restTimeRemaining = REST_SECONDS;
+		const endTime = Date.now() + REST_SECONDS * 1000;
+		restTimerEnd = endTime;
 		restTimerStatus = 'active';
+		restTimeRemaining = REST_SECONDS;
 
-		restTimerInterval = setInterval(() => {
-			restTimeRemaining -= 1;
+		if (typeof localStorage !== 'undefined') {
+			localStorage.setItem(REST_TIMER_STORAGE_KEY, String(endTime));
+		}
 
-			if (restTimeRemaining <= 0) {
-				restTimeRemaining = 0;
-				restTimerStatus = 'done';
-				clearInterval(restTimerInterval!);
-				restTimerInterval = null;
-
-				if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
-					navigator.vibrate([200, 100, 200]);
-				}
-
-				restHideTimeout = setTimeout(() => {
-					restTimerStatus = 'idle';
-				}, 3000);
-			} else if (restTimeRemaining <= 10) {
-				restTimerStatus = 'warning';
-			}
-		}, 1000);
+		updateRestTimerFromClock();
+		restTimerInterval = setInterval(updateRestTimerFromClock, 1000);
 	}
 
 	function mergeInProgressSession(newSession: SessionExercise[]): SessionExercise[] {
