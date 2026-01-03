@@ -13,7 +13,6 @@ export const workoutTemplate: SessionExercise[] = [
 ];
 
 export const todayString = () => new Date().toDateString();
-const LOW_REP_CEILING = 5;
 const tomorrowString = () => {
 	const d = new Date();
 	d.setDate(d.getDate() + 1);
@@ -66,10 +65,23 @@ type ExerciseSession = {
 	dateKey: string;
 	sets: HistoryEntry[];
 	complete: boolean;
-	allAtLeastTwelve: boolean;
-	allAtMostLow: boolean;
 	averageWeight: number;
+	minReps: number;
+	maxReps: number;
 };
+
+type RepRange = {
+	lower: number;
+	upper: number;
+};
+
+function getRepRange(exerciseName: string): RepRange {
+	const lowerFatigueGroup = ['Deadlifts', 'Squats'];
+	if (lowerFatigueGroup.includes(exerciseName)) {
+		return { lower: 5, upper: 8 };
+	}
+	return { lower: 6, upper: 10 };
+}
 
 export function getNextSessionProgression(
 	template: SessionExercise,
@@ -91,8 +103,13 @@ export function computeProgression(
 		.filter((h) => h.exercise === template.name)
 		.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
+	const repRange = getRepRange(template.name);
 	const latestEntry = exerciseHistory[0];
-	const defaultReps = latestEntry ? latestEntry.reps : template.defaultReps;
+	const defaultReps = clamp(
+		latestEntry ? latestEntry.reps : template.defaultReps,
+		repRange.lower,
+		repRange.upper
+	);
 
 	const todaysEntry = exerciseHistory.find((h) => new Date(h.timestamp).toDateString() === today);
 	if (todaysEntry) {
@@ -118,86 +135,44 @@ export function computeProgression(
 			: template.defaultWeight;
 
 	const completeSessions = sessions.filter((session) => session.complete);
-	const [latestComplete, previousComplete] = completeSessions;
+	const [latestComplete] = completeSessions;
+
+	const hitsUpperBound =
+		latestComplete && latestComplete.minReps >= repRange.upper && latestComplete.complete;
+	const belowLowerBound =
+		latestComplete && latestComplete.maxReps <= repRange.lower && latestComplete.complete;
 
 	let advice: ProgressionAdvice;
-	const consecutiveHigh = countConsecutive(completeSessions, (session) => session.allAtLeastTwelve);
-	const consecutiveLow = countConsecutive(completeSessions, (session) => session.allAtMostLow);
-	const recentHigh = latestComplete?.allAtLeastTwelve ?? false;
-	const recentLow = latestComplete?.allAtMostLow ?? false;
 
-	if (latestComplete && previousComplete && latestComplete.allAtLeastTwelve && previousComplete.allAtLeastTwelve) {
+	if (hitsUpperBound) {
 		const suggested = roundDownToIncrement(baseWeight * 1.025);
 		advice = {
 			action: 'increase',
-			message: '2 sessions with all sets at 12+ reps — nudged weight up by ~2.5%.',
+			message: `All sets at ${repRange.upper}+ last session — nudged weight up by ~2.5%.`,
 			previousWeight: baseWeight,
-			suggestedWeight: suggested,
-			consecutiveHigh,
-			consecutiveLow,
-			recentHigh,
-			recentLow
+			suggestedWeight: suggested
 		};
-	} else if (
-		latestComplete &&
-		previousComplete &&
-		latestComplete.allAtMostLow &&
-		previousComplete.allAtMostLow
-	) {
+	} else if (belowLowerBound) {
 		const suggested = roundDownToIncrement(baseWeight * 0.95);
 		advice = {
 			action: 'decrease',
-			message: '2 sessions stuck at 5 reps or fewer — reducing weight by ~5% for better form.',
+			message: `All sets at ${repRange.lower} or below — reducing weight by ~5% to rebuild.`,
 			previousWeight: baseWeight,
-			suggestedWeight: suggested,
-			consecutiveHigh,
-			consecutiveLow,
-			recentHigh,
-			recentLow
-		};
-	} else if (latestComplete?.allAtLeastTwelve) {
-		advice = {
-			action: 'maintain',
-			message: 'Hit 12+ reps last session; repeat once more before adding weight.',
-			previousWeight: baseWeight,
-			suggestedWeight: baseWeight,
-			consecutiveHigh,
-			consecutiveLow,
-			recentHigh,
-			recentLow
-		};
-	} else if (latestComplete?.allAtMostLow) {
-		advice = {
-			action: 'maintain',
-			message: 'Under 5 reps last time — stay at this load and focus on form before dropping.',
-			previousWeight: baseWeight,
-			suggestedWeight: baseWeight,
-			consecutiveHigh,
-			consecutiveLow,
-			recentHigh,
-			recentLow
+			suggestedWeight: suggested
 		};
 	} else if (latestComplete) {
 		advice = {
 			action: 'maintain',
-			message: 'Keep pushing this load until you can hit 12 reps across all 3 sets twice.',
+			message: `Stay at this load until you hit the upper bound (${repRange.upper} reps) or drop below ${repRange.lower}.`,
 			previousWeight: baseWeight,
-			suggestedWeight: baseWeight,
-			consecutiveHigh,
-			consecutiveLow,
-			recentHigh,
-			recentLow
+			suggestedWeight: baseWeight
 		};
 	} else {
 		advice = {
 			action: 'maintain',
 			message: 'No full sessions logged yet — start with the base weight.',
 			previousWeight: baseWeight,
-			suggestedWeight: baseWeight,
-			consecutiveHigh,
-			consecutiveLow,
-			recentHigh,
-			recentLow
+			suggestedWeight: baseWeight
 		};
 	}
 
@@ -218,18 +193,19 @@ function summarizeExerciseSessions(history: HistoryEntry[]): ExerciseSession[] {
 		const sortedSets = sets.sort((a, b) => a.setNumber - b.setNumber);
 		const trimmedSets = sortedSets.slice(0, SETS_PER_EXERCISE);
 		const complete = trimmedSets.length >= SETS_PER_EXERCISE;
-		const allAtLeastTwelve = complete && trimmedSets.every((set) => set.reps >= 12);
-		const allAtMostLow = complete && trimmedSets.every((set) => set.reps <= LOW_REP_CEILING);
 		const averageWeight =
 			trimmedSets.reduce((total, set) => total + set.weight, 0) / (trimmedSets.length || 1);
+		const reps = trimmedSets.map((set) => set.reps);
+		const minReps = reps.length ? Math.min(...reps) : 0;
+		const maxReps = reps.length ? Math.max(...reps) : 0;
 
 		return {
 			dateKey,
 			sets: trimmedSets,
 			complete,
-			allAtLeastTwelve,
-			allAtMostLow,
-			averageWeight: Number.isFinite(averageWeight) ? Number(averageWeight.toFixed(1)) : 0
+			averageWeight: Number.isFinite(averageWeight) ? Number(averageWeight.toFixed(1)) : 0,
+			minReps,
+			maxReps
 		};
 	});
 
@@ -243,19 +219,8 @@ function roundDownToIncrement(value: number, increment = 0.5) {
 	return Number((factor * increment).toFixed(1));
 }
 
-function countConsecutive(
-	sessions: ExerciseSession[],
-	predicate: (session: ExerciseSession) => boolean
-): number {
-	let count = 0;
-	for (const session of sessions) {
-		if (predicate(session)) {
-			count += 1;
-		} else {
-			break;
-		}
-	}
-	return count;
+function clamp(value: number, min: number, max: number) {
+	return Math.max(min, Math.min(max, value));
 }
 
 export function formatTimestamp(isoString: string) {
