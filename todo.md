@@ -1,2 +1,1 @@
 - the streak seems off (should keep each training day in a row, when for the last work outs the at least 2 workouts the week is kept)
-- the timer should be state based so that we can leave the browser for a while and when we come back the counter counted down
