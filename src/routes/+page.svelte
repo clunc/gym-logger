@@ -17,6 +17,7 @@
 	let currentSession: SessionExercise[] = [];
 	let restTimeRemaining = REST_SECONDS;
 	let restTimerEnd: number | null = null;
+	let lastRestTimerTarget: number | null = null;
 	let restTimerStatus: 'idle' | 'active' | 'warning' | 'done' = 'idle';
 	let restTimerInterval: ReturnType<typeof setInterval> | null = null;
 	let restHideTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -52,6 +53,7 @@
 		} finally {
 			currentSession = createSession(history);
 			restoreRestTimer();
+			syncRestTimerFromHistory();
 			ready = true;
 			pollInterval = setInterval(syncHistory, 15000);
 		}
@@ -68,6 +70,7 @@
 			const latest = await fetchHistory();
 			history = latest;
 			currentSession = mergeInProgressSession(createSession(history));
+			syncRestTimerFromHistory();
 		} catch (error) {
 			console.error('Failed to refresh history', error);
 			loadError = 'Could not refresh history from server.';
@@ -229,6 +232,24 @@
 		restTimerStatus = restTimeRemaining <= 10 ? 'warning' : 'active';
 	}
 
+	function setRestTimerEnd(endTime: number) {
+		if (restTimerInterval) clearInterval(restTimerInterval);
+		if (restHideTimeout) clearTimeout(restHideTimeout);
+
+		lastRestTimerTarget = endTime;
+		restTimerEnd = endTime;
+
+		if (typeof localStorage !== 'undefined') {
+			localStorage.setItem(REST_TIMER_STORAGE_KEY, String(endTime));
+		}
+
+		updateRestTimerFromClock();
+
+		if (restTimerStatus !== 'done') {
+			restTimerInterval = setInterval(updateRestTimerFromClock, 1000);
+		}
+	}
+
 	function restoreRestTimer() {
 		if (typeof localStorage === 'undefined') return;
 		const stored = localStorage.getItem(REST_TIMER_STORAGE_KEY);
@@ -240,30 +261,40 @@
 			return;
 		}
 
-		restTimerEnd = parsed;
-		updateRestTimerFromClock();
-
-		if (restTimerStatus === 'done') return;
-
-		if (restTimerInterval) clearInterval(restTimerInterval);
-		restTimerInterval = setInterval(updateRestTimerFromClock, 1000);
+		setRestTimerEnd(parsed);
 	}
 
 	function startRestTimer() {
-		if (restTimerInterval) clearInterval(restTimerInterval);
-		if (restHideTimeout) clearTimeout(restHideTimeout);
-
 		const endTime = Date.now() + REST_SECONDS * 1000;
-		restTimerEnd = endTime;
-		restTimerStatus = 'active';
-		restTimeRemaining = REST_SECONDS;
+		setRestTimerEnd(endTime);
+	}
 
-		if (typeof localStorage !== 'undefined') {
-			localStorage.setItem(REST_TIMER_STORAGE_KEY, String(endTime));
+	function latestRestEndFromHistory(): number | null {
+		const today = todayString();
+		let latestTimestamp: number | null = null;
+
+		for (const entry of history) {
+			if ((entry.type ?? 'workout') !== 'workout') continue;
+
+			const parsed = new Date(entry.timestamp);
+			const ts = parsed.getTime();
+			if (!Number.isFinite(ts) || parsed.toDateString() !== today) continue;
+
+			if (latestTimestamp === null || ts > latestTimestamp) {
+				latestTimestamp = ts;
+			}
 		}
 
-		updateRestTimerFromClock();
-		restTimerInterval = setInterval(updateRestTimerFromClock, 1000);
+		return latestTimestamp === null ? null : latestTimestamp + REST_SECONDS * 1000;
+	}
+
+	function syncRestTimerFromHistory() {
+		const endTime = latestRestEndFromHistory();
+		if (!endTime) return;
+
+		if (lastRestTimerTarget && lastRestTimerTarget >= endTime) return;
+
+		setRestTimerEnd(endTime);
 	}
 
 	function mergeInProgressSession(newSession: SessionExercise[]): SessionExercise[] {
