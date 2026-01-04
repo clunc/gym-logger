@@ -34,6 +34,14 @@ function initDb() {
 		db.exec(`ALTER TABLE history ADD COLUMN type TEXT NOT NULL DEFAULT 'workout'`);
 	}
 
+	db.exec(`
+		CREATE TABLE IF NOT EXISTS exercise_names (
+			canonical TEXT PRIMARY KEY,
+			current TEXT NOT NULL
+		)
+	`);
+	db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_exercise_names_current ON exercise_names(current)`);
+
 	return db;
 }
 
@@ -85,4 +93,60 @@ export async function deleteTodayEntry({
 	db.close();
 
 	return result.changes ?? 0;
+}
+
+export async function renameExercise(current: string, next: string): Promise<void> {
+	await ensureDbFile();
+	const db = initDb();
+
+	const hasConflict = db
+		.prepare(
+			`SELECT 1 FROM exercise_names WHERE (current = ? OR canonical = ?) AND canonical != ? LIMIT 1`
+		)
+		.get(next, next, current);
+	if (hasConflict) {
+		db.close();
+		throw new Error('Target name already exists');
+	}
+
+	const updateHistory = db.prepare(`UPDATE history SET exercise = ? WHERE exercise = ?`);
+	const upsertName = db.prepare(
+		`INSERT INTO exercise_names (canonical, current) VALUES (?, ?)
+		 ON CONFLICT(canonical) DO UPDATE SET current=excluded.current`
+	);
+	const updateExisting = db.prepare(
+		`UPDATE exercise_names SET current = ? WHERE current = ? OR canonical = ?`
+	);
+
+	const transaction = db.transaction(() => {
+		updateHistory.run(next, current);
+		const existing = db
+			.prepare(
+				`SELECT canonical, current FROM exercise_names WHERE current = ? OR canonical = ? LIMIT 1`
+			)
+			.get(current, current) as { canonical: string; current: string } | undefined;
+
+		if (existing) {
+			updateExisting.run(next, current, current);
+		} else {
+			upsertName.run(current, next);
+		}
+	});
+
+	transaction();
+	db.close();
+}
+
+export async function readExerciseNames(): Promise<Record<string, string>> {
+	await ensureDbFile();
+	const db = initDb();
+	const rows = db
+		.prepare(`SELECT canonical, current FROM exercise_names`)
+		.all() as { canonical: string; current: string }[];
+	db.close();
+
+	return rows.reduce<Record<string, string>>((map, row) => {
+		map[row.canonical] = row.current;
+		return map;
+	}, {});
 }

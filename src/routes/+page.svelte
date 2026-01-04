@@ -3,11 +3,15 @@
 	import ExerciseCard from '$lib/components/ExerciseCard.svelte';
 	import HistoryList from '$lib/components/HistoryList.svelte';
 	import RestTimer from '$lib/components/RestTimer.svelte';
-	import { appendHistory, deleteHistoryEntry, fetchHistory } from '$lib/api/history';
-	import {
-		createSession,
-		getNextSessionProgression,
-		REST_SECONDS,
+import {
+	appendHistory,
+	deleteHistoryEntry,
+	fetchHistory
+} from '$lib/api/history';
+import {
+	createSession,
+	getNextSessionProgression,
+	REST_SECONDS,
 		todayString,
 		workoutTemplate
 	} from '$lib/workout';
@@ -15,6 +19,7 @@
 
 	let history: HistoryEntry[] = [];
 	let currentSession: SessionExercise[] = [];
+	let resolvedTemplate: SessionExercise[] = workoutTemplate;
 	let restTimeRemaining = REST_SECONDS;
 	let restTimerEnd: number | null = null;
 	let lastRestTimerTarget: number | null = null;
@@ -38,7 +43,7 @@
 
 	function computeNextProgressions() {
 		return currentSession.map((exercise) => {
-			const template = workoutTemplate.find((t) => t.name === exercise.name);
+			const template = resolvedTemplate.find((t) => t.name === exercise.name);
 			if (!template) return null;
 			return getNextSessionProgression(template, history);
 		});
@@ -46,12 +51,14 @@
 
 	onMount(async () => {
 		try {
-			history = await fetchHistory();
+			const initial = await fetchHistory();
+			history = initial.history;
+			resolvedTemplate = initial.template?.length ? initial.template : workoutTemplate;
 		} catch (error) {
 			console.error(error);
 			loadError = 'Could not load history. Changes will not be saved.';
 		} finally {
-			currentSession = createSession(history);
+			currentSession = createSession(history, resolvedTemplate);
 			restoreRestTimer();
 			syncRestTimerFromHistory();
 			ready = true;
@@ -82,8 +89,9 @@
 	async function syncHistory() {
 		try {
 			const latest = await fetchHistory();
-			history = latest;
-			currentSession = mergeInProgressSession(createSession(history));
+			history = latest.history;
+			resolvedTemplate = latest.template?.length ? latest.template : resolvedTemplate;
+			currentSession = mergeInProgressSession(createSession(history, resolvedTemplate));
 			syncRestTimerFromHistory();
 		} catch (error) {
 			console.error('Failed to refresh history', error);

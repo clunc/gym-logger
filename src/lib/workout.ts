@@ -3,6 +3,8 @@ import type { HistoryEntry, ProgressionAdvice, SessionExercise, SetEntry } from 
 export const SETS_PER_EXERCISE = 3;
 export const REST_SECONDS = 90;
 
+export type ExerciseNames = Record<string, string>;
+
 export const workoutTemplate: SessionExercise[] = [
 	{ name: 'Deadlifts', sets: [], defaultWeight: 90, defaultReps: 5 },
 	{ name: 'Squats', sets: [], defaultWeight: 80, defaultReps: 5 },
@@ -19,7 +21,19 @@ const tomorrowString = () => {
 	return d.toDateString();
 };
 
-export function createSession(history: HistoryEntry[]): SessionExercise[] {
+export function resolveWorkoutTemplate(renames?: ExerciseNames): SessionExercise[] {
+	if (!renames || Object.keys(renames).length === 0) return workoutTemplate;
+
+	return workoutTemplate.map((exercise) => {
+		const renamed = renames[exercise.name];
+		return renamed ? { ...exercise, name: renamed } : exercise;
+	});
+}
+
+export function createSession(
+	history: HistoryEntry[],
+	template: SessionExercise[] = workoutTemplate
+): SessionExercise[] {
 	const today = todayString();
 	const workoutHistory = history.filter((h) => (h.type ?? 'workout') === 'workout');
 
@@ -58,7 +72,7 @@ export function createSession(history: HistoryEntry[]): SessionExercise[] {
 		return { ...template, sets, progression };
 	};
 
-	return workoutTemplate.map(cloneSet);
+	return template.map(cloneSet);
 }
 
 type ExerciseSession = {

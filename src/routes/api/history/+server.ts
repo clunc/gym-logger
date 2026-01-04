@@ -1,5 +1,11 @@
 import { json } from '@sveltejs/kit';
-import { appendHistory, deleteTodayEntry, readHistory } from '$lib/server/historyStore';
+import {
+	appendHistory,
+	deleteTodayEntry,
+	readExerciseNames,
+	readHistory
+} from '$lib/server/historyStore';
+import { resolveWorkoutTemplate } from '$lib/workout';
 import type { RequestHandler } from './$types';
 import type { HistoryEntry } from '$lib/types';
 
@@ -22,8 +28,9 @@ const isValidEntry = (entry: unknown): entry is HistoryEntry => {
 };
 
 export const GET: RequestHandler = async () => {
-	const history = await readHistory();
-	return json({ history });
+	const [history, exerciseNames] = await Promise.all([readHistory(), readExerciseNames()]);
+	const template = resolveWorkoutTemplate(exerciseNames);
+	return json({ history, template });
 };
 
 export const PUT: RequestHandler = async ({ request }) => {
