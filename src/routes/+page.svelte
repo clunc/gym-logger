@@ -435,14 +435,14 @@ import {
 	}
 
 	$: {
-		const dateSet = history.reduce((set, entry) => {
+		const loggedDays = history.reduce((set, entry) => {
 			set.add(dateKey(entry.timestamp));
 			return set;
 		}, new Set<string>());
 
-		hasToday = dateSet.has(todayString());
+		hasToday = loggedDays.has(todayString());
 
-		const weekCounts = Array.from(dateSet).reduce((map, day) => {
+		const weekCounts = Array.from(loggedDays).reduce((map, day) => {
 			const key = weekKey(new Date(day));
 			map.set(key, (map.get(key) || 0) + 1);
 			return map;
@@ -453,28 +453,27 @@ import {
 		const thisWeekCount = weekCounts.get(thisWeekKey) || 0;
 		weeklyTargetMet = thisWeekCount >= WEEKLY_STREAK_TARGET;
 
-		const orderedDates = Array.from(dateSet)
+		const workoutDays = history
+			.filter((entry) => (entry.type ?? 'workout') === 'workout')
+			.reduce((set, entry) => {
+				set.add(dateKey(entry.timestamp));
+				return set;
+			}, new Set<string>());
+
+		const orderedWorkoutDates = Array.from(workoutDays)
 			.map((value) => new Date(value))
 			.sort((a, b) => b.getTime() - a.getTime());
 
 		let count = 0;
-		let cursor = orderedDates[0];
-		while (cursor && true) {
-			const key = cursor.toDateString();
-			if (!dateSet.has(key)) break;
-
-			const weekOk = (weekCounts.get(weekKey(cursor)) || 0) >= WEEKLY_STREAK_TARGET;
-			if (!weekOk) break;
-
+		for (const workoutDay of orderedWorkoutDates) {
+			const weekTotal = weekCounts.get(weekKey(workoutDay)) || 0;
+			if (weekTotal < WEEKLY_STREAK_TARGET) break;
 			count += 1;
-			const previous = new Date(cursor);
-			previous.setDate(cursor.getDate() - 1);
-			cursor = previous;
 		}
 		streakCount = count;
 
 		const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
-		const monthDates = Array.from(dateSet).filter((key) => {
+		const monthDates = Array.from(loggedDays).filter((key) => {
 			const date = new Date(key);
 			return date.getMonth() === monthStart.getMonth() && date.getFullYear() === monthStart.getFullYear();
 		});
