@@ -19,7 +19,8 @@
   ],
   "remoteUser": "vscode",
   "containerEnv": {
-    "SSH_AUTH_SOCK": "/ssh-agent"
+    "SSH_AUTH_SOCK": "/ssh-agent",
+    "NODE_ENV": "development"
   },
   "forwardPorts": [
     5173,
