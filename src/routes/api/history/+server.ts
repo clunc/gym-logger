@@ -15,7 +15,7 @@ const isValidEntry = (entry: unknown): entry is HistoryEntry => {
 	const candidate = entry as Record<string, unknown>;
 	const type = candidate.type;
 	const isValidType =
-		type === undefined || type === 'workout' || type === 'sick';
+		type === undefined || type === 'workout' || type === 'sick' || type === 'vacation';
 
 	return (
 		isValidType &&

@@ -13,12 +13,14 @@
 				<div class="history-header">
 					{#if (entry.type ?? 'workout') === 'sick'}
 						<span class="history-exercise sick">🤒 Sick Day</span>
+					{:else if (entry.type ?? 'workout') === 'vacation'}
+						<span class="history-exercise vacation">🏖️ Vacation</span>
 					{:else}
 						<span class="history-exercise">{entry.exercise} - Set {entry.setNumber}</span>
 					{/if}
 					<span class="history-date">{formatTimestamp(entry.timestamp)}</span>
 				</div>
-				{#if (entry.type ?? 'workout') === 'sick'}
+				{#if (entry.type ?? 'workout') === 'sick' || (entry.type ?? 'workout') === 'vacation'}
 					<div class="history-set sick-note">Counts toward plan</div>
 				{:else}
 					<div class="history-set">{entry.weight} kg × {entry.reps} reps</div>
@@ -63,6 +65,10 @@
 
 	.history-exercise.sick {
 		color: #b91c1c;
+	}
+
+	.history-exercise.vacation {
+		color: #1d4ed8;
 	}
 
 	.history-date {

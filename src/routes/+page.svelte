@@ -391,6 +391,12 @@
 			new Date(entry.timestamp).toDateString() === todayString()
 	);
 
+	$: todayVacationEntry = history.find(
+		(entry) =>
+			(entry.type ?? 'workout') === 'vacation' &&
+			new Date(entry.timestamp).toDateString() === todayString()
+	);
+
 	async function logSickDay() {
 		if (todaySickEntry) return;
 		const entry: HistoryEntry = {
@@ -444,9 +450,63 @@
 		}
 	}
 
+	async function logVacationDay() {
+		if (todayVacationEntry) return;
+		const entry: HistoryEntry = {
+			type: 'vacation',
+			exercise: VACATION_EXERCISE,
+			setNumber: 0,
+			weight: 0,
+			reps: 0,
+			timestamp: new Date().toISOString()
+		};
+
+		history = [entry, ...history];
+
+		if (!loadError) {
+			try {
+				await appendHistory([entry]);
+				await syncHistory();
+			} catch (error) {
+				console.error(error);
+				loadError = 'Could not save vacation day. Changes will not be saved.';
+			}
+		}
+	}
+
+	async function undoVacationDay() {
+		if (!todayVacationEntry) return;
+
+		try {
+			await deleteHistoryEntry({
+				exercise: todayVacationEntry.exercise,
+				setNumber: todayVacationEntry.setNumber,
+				timestamp: todayVacationEntry.timestamp
+			});
+		} catch (error) {
+			console.error(error);
+			loadError = 'Could not delete vacation day. History remains unchanged.';
+			return;
+		}
+
+		history = history.filter(
+			(h) =>
+				!(
+					h.exercise === todayVacationEntry?.exercise &&
+					h.setNumber === todayVacationEntry?.setNumber &&
+					h.timestamp === todayVacationEntry?.timestamp
+				)
+		);
+
+		if (!loadError) {
+			await syncHistory();
+		}
+	}
+
 	const WEEKLY_STREAK_TARGET = 2;
 	const WEEKLY_PLANNED_WORKOUTS = 3;
 	const SICK_EXERCISE = 'Sick Day';
+	const VACATION_EXERCISE = 'Vacation Day';
 
 	const dateKey = (timestamp: string) => new Date(timestamp).toDateString();
 	const startOfWeek = (date: Date) => {
@@ -594,22 +654,27 @@
 					oneRmEstimate={oneRmEstimates[exerciseIdx]}
 					onAdjustWeight={adjustWeight}
 					onAdjustReps={adjustReps}
-					onAdjustBodyweight={adjustBodyweight}
 					onSetWeight={setWeightFromInput}
 					onSetReps={setRepsFromInput}
-					onSetBodyweight={setBodyweightFromInput}
 					onLogSet={logSet}
 					onUndoSet={undoSet}
 				/>
 			{/each}
 
 			<HistoryList entries={todaysHistory} />
-			<div class="sick-row">
-				<button class={`sick-button ${todaySickEntry ? 'active' : ''}`} on:click={todaySickEntry ? undoSickDay : logSickDay}>
+			<div class="status-row">
+				<button class={`status-button sick ${todaySickEntry ? 'active' : ''}`} on:click={todaySickEntry ? undoSickDay : logSickDay}>
 					{#if todaySickEntry}
 						🤒 Sick leave active
 					{:else}
 						🚑 Mark today as sick leave
+					{/if}
+				</button>
+				<button class={`status-button vacation ${todayVacationEntry ? 'active' : ''}`} on:click={todayVacationEntry ? undoVacationDay : logVacationDay}>
+					{#if todayVacationEntry}
+						🏖️ Vacation active
+					{:else}
+						🏖️ Mark today as vacation
 					{/if}
 				</button>
 			</div>
@@ -724,13 +789,15 @@
 		font-size: 14px;
 	}
 
-	.sick-row {
+	.status-row {
 		display: flex;
 		justify-content: flex-end;
+		gap: 10px;
 		margin: 6px 0 10px;
+		flex-wrap: wrap;
 	}
 
-	.sick-button {
+	.status-button {
 		border: 1px solid #cbd5e1;
 		background: #ffffff;
 		border-radius: 10px;
@@ -744,15 +811,24 @@
 		text-align: center;
 	}
 
-	.sick-button:hover {
+	.status-button:hover {
 		transform: translateY(-1px);
 		box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
 	}
 
-	.sick-button.active {
+	.status-button.active {
+	}
+
+	.status-button.sick.active {
 		background: #fef2f2;
 		border-color: #fecdd3;
 		color: #b91c1c;
+	}
+
+	.status-button.vacation.active {
+		background: #eff6ff;
+		border-color: #bfdbfe;
+		color: #1d4ed8;
 	}
 
 	.summary-cards {
