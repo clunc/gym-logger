@@ -6,16 +6,12 @@
 	export let setIdx: number;
 	export let onAdjustWeight: (exerciseIdx: number, setIdx: number, delta: number) => void;
 	export let onAdjustReps: (exerciseIdx: number, setIdx: number, delta: number) => void;
-	export let onAdjustBodyweight: (exerciseIdx: number, setIdx: number, delta: number) => void;
 	export let onSetWeight: (exerciseIdx: number, setIdx: number, value: number | null) => void;
 	export let onSetReps: (exerciseIdx: number, setIdx: number, value: number | null) => void;
-	export let onSetBodyweight: (exerciseIdx: number, setIdx: number, value: number | null) => void;
 	export let onLogSet: (exerciseIdx: number, setIdx: number) => void;
 	export let onUndoSet: (exerciseIdx: number, setIdx: number) => void;
-	export let showBodyweight = false;
 
 	const weightId = `weight-${exerciseIdx}-${setIdx}`;
-	const bodyweightId = `bodyweight-${exerciseIdx}-${setIdx}`;
 	const repsId = `reps-${exerciseIdx}-${setIdx}`;
 
 	const toNumberOrNull = (value: string) => {
@@ -33,11 +29,6 @@
 		const target = event.currentTarget as HTMLInputElement;
 		onSetReps(exerciseIdx, setIdx, toNumberOrNull(target.value));
 	}
-
-	function handleBodyweightInput(event: Event) {
-		const target = event.currentTarget as HTMLInputElement;
-		onSetBodyweight(exerciseIdx, setIdx, toNumberOrNull(target.value));
-	}
 </script>
 
 <div class="set-row">
@@ -45,7 +36,7 @@
 		<div class="set-number">Set {set.setNumber}</div>
 	</div>
 
-	<div class="set-inputs" class:with-bodyweight={showBodyweight}>
+	<div class="set-inputs">
 		<div class="set-input-group">
 			<label class="set-input-label" for={weightId}>Weight (kg)</label>
 			<div class="input-with-buttons">
@@ -69,32 +60,6 @@
 				</button>
 			</div>
 		</div>
-
-		{#if showBodyweight}
-			<div class="set-input-group">
-				<label class="set-input-label" for={bodyweightId}>Bodyweight (kg)</label>
-				<div class="input-with-buttons">
-					<button class="adjust-btn" on:click={() => onAdjustBodyweight(exerciseIdx, setIdx, -0.5)} disabled={set.completed} type="button">
-						−
-					</button>
-					<input
-						type="number"
-						step="0.5"
-						class="set-input"
-						class:completed={set.completed}
-						value={Number.isFinite(set.bodyweight) ? set.bodyweight : ''}
-						min="0"
-						readonly={set.completed}
-						inputmode="decimal"
-						id={bodyweightId}
-						on:input={handleBodyweightInput}
-					/>
-					<button class="adjust-btn" on:click={() => onAdjustBodyweight(exerciseIdx, setIdx, 0.5)} disabled={set.completed} type="button">
-						+
-					</button>
-				</div>
-			</div>
-		{/if}
 
 		<div class="set-input-group">
 			<label class="set-input-label" for={repsId}>Reps</label>
@@ -172,9 +137,6 @@
 		align-items: center;
 	}
 
-	.set-inputs.with-bodyweight {
-		grid-template-columns: minmax(88px, 1fr) minmax(88px, 1fr) minmax(88px, 1fr) 60px;
-	}
 
 	.set-input-group {
 		display: flex;
@@ -317,9 +279,6 @@
 			row-gap: 8px;
 		}
 
-		.set-inputs.with-bodyweight {
-			grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr);
-		}
 
 		.set-actions {
 			align-self: center;
@@ -346,9 +305,6 @@
 			column-gap: 4px;
 		}
 
-		.set-inputs.with-bodyweight {
-			grid-template-columns: minmax(132px, 1fr) minmax(132px, 1fr);
-		}
 
 		.input-with-buttons {
 			gap: 4px;

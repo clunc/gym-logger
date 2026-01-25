@@ -21,6 +21,8 @@ const tomorrowString = () => {
 	return d.toDateString();
 };
 
+const HARD_CODED_PULLUP_BODYWEIGHT_KG = 92;
+
 const isPullUpExercise = (exerciseName: string) => {
 	const name = exerciseName.toLowerCase();
 	return name.includes('chin up') || name.includes('pull up');
@@ -45,14 +47,6 @@ export function createSession(
 	const cloneSet = (template: SessionExercise): SessionExercise => {
 		const { baseWeight, defaultReps, progression } = computeProgression(template, workoutHistory, today);
 		const defaultWeight = baseWeight;
-		const useBodyweight = isPullUpExercise(template.name);
-		const latestBodyweight = useBodyweight
-			? workoutHistory.find(
-					(entry) =>
-						entry.exercise === template.name && Number.isFinite(entry.bodyweight ?? NaN)
-				)?.bodyweight
-			: undefined;
-
 		const sets: SetEntry[] = Array.from({ length: SETS_PER_EXERCISE }, (_, idx) => {
 			const setNumber = idx + 1;
 			const todaysLog = workoutHistory.find(
@@ -63,13 +57,9 @@ export function createSession(
 			);
 
 			if (todaysLog) {
-				const bodyweight = Number.isFinite(todaysLog.bodyweight ?? NaN)
-					? todaysLog.bodyweight
-					: undefined;
 				return {
 					setNumber,
 					weight: todaysLog.weight,
-					bodyweight: Number.isFinite(bodyweight ?? NaN) ? bodyweight : undefined,
 					reps: todaysLog.reps,
 					completed: true,
 					timestamp: todaysLog.timestamp
@@ -79,7 +69,6 @@ export function createSession(
 			return {
 				setNumber,
 				weight: defaultWeight,
-				bodyweight: Number.isFinite(latestBodyweight ?? NaN) ? latestBodyweight : undefined,
 				reps: defaultReps,
 				completed: false,
 				timestamp: null
@@ -286,17 +275,12 @@ const median = (values: number[]) => {
 };
 
 const pullUpSessionStats = (session: ExerciseSession) => {
-	const bodyweights = session.sets
-		.map((set) => set.bodyweight)
-		.filter((value): value is number => Number.isFinite(value));
-	const bodyweight = bodyweights.length ? median(bodyweights) : null;
 	const averageAdded =
 		session.sets.reduce((total, set) => total + set.weight, 0) / (session.sets.length || 1);
-	const totalLoad = bodyweight === null ? averageAdded : averageAdded + bodyweight;
+	const totalLoad = averageAdded + HARD_CODED_PULLUP_BODYWEIGHT_KG;
 	return {
 		addedLoad: Number.isFinite(averageAdded) ? averageAdded : 0,
-		totalLoad: Number.isFinite(totalLoad) ? totalLoad : 0,
-		bodyweight
+		totalLoad: Number.isFinite(totalLoad) ? totalLoad : 0
 	};
 };
 
@@ -403,16 +387,9 @@ export function getExerciseOneRmEstimate(
 				(1 + medianReps / 30)
 			: medianWeight * Math.pow(medianReps, 0.1);
 	const estimateTotal = base * formula.correction;
-	const medianBodyweight = isPullUp
-		? median(
-				pullUpStats
-					.map((stats) => stats.bodyweight)
-					.filter((value): value is number => Number.isFinite(value))
-			)
-		: null;
 	const estimate =
-		isPullUp && Number.isFinite(medianBodyweight ?? NaN)
-			? estimateTotal - (medianBodyweight as number)
+		isPullUp
+			? estimateTotal - HARD_CODED_PULLUP_BODYWEIGHT_KG
 			: estimateTotal;
 	const ciHalf = 1.96 * formula.see(medianReps);
 

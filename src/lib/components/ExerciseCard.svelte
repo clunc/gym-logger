@@ -8,18 +8,12 @@
 	export let nextProgression: ProgressionAdvice | null = null;
 	export let onAdjustWeight: (exerciseIdx: number, setIdx: number, delta: number) => void;
 	export let onAdjustReps: (exerciseIdx: number, setIdx: number, delta: number) => void;
-	export let onAdjustBodyweight: (exerciseIdx: number, setIdx: number, delta: number) => void;
 	export let onSetWeight: (exerciseIdx: number, setIdx: number, value: number | null) => void;
 	export let onSetReps: (exerciseIdx: number, setIdx: number, value: number | null) => void;
-	export let onSetBodyweight: (exerciseIdx: number, setIdx: number, value: number | null) => void;
 	export let onLogSet: (exerciseIdx: number, setIdx: number) => void;
 	export let onUndoSet: (exerciseIdx: number, setIdx: number) => void;
 	export let oneRmEstimate: OneRmEstimate | null = null;
 
-	const isBodyweightExercise = (name: string) => {
-		const lowered = name.toLowerCase();
-		return lowered.includes('pull up') || lowered.includes('chin up');
-	};
 
 	const roundDownToIncrement = (value: number, increment = 0.5) => {
 		const factor = Math.floor(value / increment);
@@ -126,13 +120,10 @@
 				{exerciseIdx}
 				{onAdjustWeight}
 				{onAdjustReps}
-				{onAdjustBodyweight}
 				{onSetWeight}
 				{onSetReps}
-				{onSetBodyweight}
 				{onLogSet}
 				{onUndoSet}
-				showBodyweight={isBodyweightExercise(exercise.name)}
 			/>
 		{/each}
 	</div>

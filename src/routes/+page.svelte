@@ -113,29 +113,11 @@
 		currentSession = [...currentSession];
 	}
 
-	function adjustBodyweight(exerciseIdx: number, setIdx: number, delta: number) {
-		const set = currentSession[exerciseIdx].sets[setIdx];
-		if (set.completed) return;
-
-		const base = Number.isFinite(set.bodyweight ?? NaN) ? (set.bodyweight as number) : 0;
-		const next = Math.max(0, base + delta);
-		set.bodyweight = Number(next.toFixed(1));
-		currentSession = [...currentSession];
-	}
-
 	function setWeightFromInput(exerciseIdx: number, setIdx: number, value: number | null) {
 		const set = currentSession[exerciseIdx].sets[setIdx];
 		if (set.completed) return;
 
 		set.weight = value === null ? NaN : value;
-		currentSession = [...currentSession];
-	}
-
-	function setBodyweightFromInput(exerciseIdx: number, setIdx: number, value: number | null) {
-		const set = currentSession[exerciseIdx].sets[setIdx];
-		if (set.completed) return;
-
-		set.bodyweight = value === null ? NaN : value;
 		currentSession = [...currentSession];
 	}
 
@@ -174,8 +156,7 @@
 			setNumber: set.setNumber,
 			weight: set.weight,
 			reps: set.reps,
-			timestamp: set.timestamp,
-			...(Number.isFinite(set.bodyweight ?? NaN) ? { bodyweight: set.bodyweight } : {})
+			timestamp: set.timestamp
 		};
 
 		history = [entry, ...history];
@@ -185,9 +166,6 @@
 		if (nextSet && !nextSet.completed) {
 			nextSet.weight = set.weight;
 			nextSet.reps = set.reps;
-			if (Number.isFinite(set.bodyweight ?? NaN)) {
-				nextSet.bodyweight = set.bodyweight;
-			}
 		}
 
 		currentSession = [...currentSession];
@@ -360,10 +338,7 @@
 				if (!set.completed && !currentSet.completed) {
 					const weight = Number.isFinite(currentSet.weight) ? currentSet.weight : set.weight;
 					const reps = Number.isFinite(currentSet.reps) ? currentSet.reps : set.reps;
-					const bodyweight = Number.isFinite(currentSet.bodyweight ?? NaN)
-						? currentSet.bodyweight
-						: set.bodyweight;
-					return { ...set, weight, reps, bodyweight };
+					return { ...set, weight, reps };
 				}
 
 				return set;
