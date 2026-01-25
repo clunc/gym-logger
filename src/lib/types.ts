@@ -3,6 +3,7 @@ export type HistoryEntry = {
 	exercise: string;
 	setNumber: number;
 	weight: number;
+	bodyweight?: number;
 	reps: number;
 	timestamp: string;
 };
@@ -10,6 +11,7 @@ export type HistoryEntry = {
 export type SetEntry = {
 	setNumber: number;
 	weight: number;
+	bodyweight?: number;
 	reps: number;
 	completed: boolean;
 	timestamp: string | null;

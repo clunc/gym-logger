@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ProgressionAdvice, SessionExercise } from '$lib/types';
+	import type { OneRmEstimate } from '$lib/workout';
 	import SetRow from './SetRow.svelte';
 
 	export let exercise: SessionExercise;
@@ -7,10 +8,18 @@
 	export let nextProgression: ProgressionAdvice | null = null;
 	export let onAdjustWeight: (exerciseIdx: number, setIdx: number, delta: number) => void;
 	export let onAdjustReps: (exerciseIdx: number, setIdx: number, delta: number) => void;
+	export let onAdjustBodyweight: (exerciseIdx: number, setIdx: number, delta: number) => void;
 	export let onSetWeight: (exerciseIdx: number, setIdx: number, value: number | null) => void;
 	export let onSetReps: (exerciseIdx: number, setIdx: number, value: number | null) => void;
+	export let onSetBodyweight: (exerciseIdx: number, setIdx: number, value: number | null) => void;
 	export let onLogSet: (exerciseIdx: number, setIdx: number) => void;
 	export let onUndoSet: (exerciseIdx: number, setIdx: number) => void;
+	export let oneRmEstimate: OneRmEstimate | null = null;
+
+	const isBodyweightExercise = (name: string) => {
+		const lowered = name.toLowerCase();
+		return lowered.includes('pull up') || lowered.includes('chin up');
+	};
 
 	const roundDownToIncrement = (value: number, increment = 0.5) => {
 		const factor = Math.floor(value / increment);
@@ -78,6 +87,8 @@
 
 		return '';
 	}
+
+	const formatOneRm = (value: number) => Number(value.toFixed(1));
 </script>
 
 <section class="card">
@@ -85,16 +96,26 @@
 		<div class="title-wrap">
 			<div class="title-row">
 				<div class="card-title">{exercise.name}</div>
+				{#if oneRmEstimate}
+					<div
+						class="one-rm-inline"
+						title={`Median of last ${oneRmEstimate.sessionCount} sessions: ${oneRmEstimate.medianWeight} kg x ${oneRmEstimate.medianReps} reps`}
+					>
+						{formatOneRm(oneRmEstimate.estimate)} ± {formatOneRm(oneRmEstimate.ciHalf)} kg (1RM)
+					</div>
+				{/if}
 			</div>
 			<div class="card-subtitle">
 				{exercise.sets.filter((set) => set.completed).length} of {exercise.sets.length} sets completed
 			</div>
 		</div>
-		{#if nextProgression}
-			<div class={`next-pill ${nextProgression.action} ${nextStatusClass}`}>
-				{nextLabel}
-			</div>
-		{/if}
+		<div class="pill-group">
+			{#if nextProgression}
+				<div class={`next-pill ${nextProgression.action} ${nextStatusClass}`}>
+					{nextLabel}
+				</div>
+			{/if}
+		</div>
 	</header>
 
 	<div class="card-body">
@@ -105,10 +126,13 @@
 				{exerciseIdx}
 				{onAdjustWeight}
 				{onAdjustReps}
+				{onAdjustBodyweight}
 				{onSetWeight}
 				{onSetReps}
+				{onSetBodyweight}
 				{onLogSet}
 				{onUndoSet}
+				showBodyweight={isBodyweightExercise(exercise.name)}
 			/>
 		{/each}
 	</div>
@@ -153,6 +177,14 @@
 		color: #172133;
 	}
 
+	.pill-group {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+	}
+
 	.card-subtitle {
 		font-size: 13px;
 		color: #999;
@@ -174,6 +206,18 @@
 		background: #eff6ff;
 		color: #1d4ed8;
 		white-space: nowrap;
+	}
+
+	.one-rm-inline {
+		font-size: 12px;
+		font-weight: 700;
+		padding: 7px 10px;
+		border-radius: 999px;
+		border: 1px solid #e2e8f0;
+		background: #f8fafc;
+		color: #0f172a;
+		white-space: nowrap;
+		width: fit-content;
 	}
 
 	.next-pill.increase {

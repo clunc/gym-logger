@@ -34,6 +34,7 @@ function initDb() {
 			exercise TEXT NOT NULL,
 			setNumber INTEGER NOT NULL,
 			weight REAL NOT NULL,
+			bodyweight REAL,
 			reps INTEGER NOT NULL,
 			timestamp TEXT NOT NULL,
 			PRIMARY KEY (exercise, setNumber, timestamp)
@@ -44,6 +45,10 @@ function initDb() {
 	const hasType = columns.some((col) => col.name === 'type');
 	if (!hasType) {
 		db.exec(`ALTER TABLE history ADD COLUMN type TEXT NOT NULL DEFAULT 'workout'`);
+	}
+	const hasBodyweight = columns.some((col) => col.name === 'bodyweight');
+	if (!hasBodyweight) {
+		db.exec(`ALTER TABLE history ADD COLUMN bodyweight REAL`);
 	}
 
 	db.exec(`
@@ -104,7 +109,7 @@ async function seedDevData(db: ReturnType<typeof initDb>) {
 	).count;
 	if (!hasHistory && Array.isArray(seed.history) && seed.history.length > 0) {
 		const insert = db.prepare(
-			`INSERT INTO history (type, exercise, setNumber, weight, reps, timestamp) VALUES (@type, @exercise, @setNumber, @weight, @reps, @timestamp)`
+			`INSERT INTO history (type, exercise, setNumber, weight, bodyweight, reps, timestamp) VALUES (@type, @exercise, @setNumber, @weight, @bodyweight, @reps, @timestamp)`
 		);
 		const transaction = db.transaction((entries: HistoryEntry[]) => {
 			for (const entry of entries) {
@@ -157,7 +162,7 @@ export async function readHistory(): Promise<HistoryEntry[]> {
 	const db = initDb();
 	const rows = db
 		.prepare(
-			`SELECT type, exercise, setNumber, weight, reps, timestamp FROM history ORDER BY datetime(timestamp) DESC`
+			`SELECT type, exercise, setNumber, weight, bodyweight, reps, timestamp FROM history ORDER BY datetime(timestamp) DESC`
 		)
 		.all();
 	db.close();
@@ -168,7 +173,7 @@ export async function appendHistory(entries: HistoryEntry[]): Promise<void> {
 	await ensureDbFile();
 	const db = initDb();
 	const insert = db.prepare(
-		`INSERT INTO history (type, exercise, setNumber, weight, reps, timestamp) VALUES (@type, @exercise, @setNumber, @weight, @reps, @timestamp)`
+		`INSERT INTO history (type, exercise, setNumber, weight, bodyweight, reps, timestamp) VALUES (@type, @exercise, @setNumber, @weight, @bodyweight, @reps, @timestamp)`
 	);
 
 	const transaction = db.transaction((toInsert: HistoryEntry[]) => {

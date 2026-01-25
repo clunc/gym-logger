@@ -21,6 +21,11 @@ const tomorrowString = () => {
 	return d.toDateString();
 };
 
+const isPullUpExercise = (exerciseName: string) => {
+	const name = exerciseName.toLowerCase();
+	return name.includes('chin up') || name.includes('pull up');
+};
+
 export function resolveWorkoutTemplate(renames?: ExerciseNames): SessionExercise[] {
 	if (!renames || Object.keys(renames).length === 0) return workoutTemplate;
 
@@ -40,6 +45,13 @@ export function createSession(
 	const cloneSet = (template: SessionExercise): SessionExercise => {
 		const { baseWeight, defaultReps, progression } = computeProgression(template, workoutHistory, today);
 		const defaultWeight = baseWeight;
+		const useBodyweight = isPullUpExercise(template.name);
+		const latestBodyweight = useBodyweight
+			? workoutHistory.find(
+					(entry) =>
+						entry.exercise === template.name && Number.isFinite(entry.bodyweight ?? NaN)
+				)?.bodyweight
+			: undefined;
 
 		const sets: SetEntry[] = Array.from({ length: SETS_PER_EXERCISE }, (_, idx) => {
 			const setNumber = idx + 1;
@@ -51,9 +63,13 @@ export function createSession(
 			);
 
 			if (todaysLog) {
+				const bodyweight = Number.isFinite(todaysLog.bodyweight ?? NaN)
+					? todaysLog.bodyweight
+					: undefined;
 				return {
 					setNumber,
 					weight: todaysLog.weight,
+					bodyweight: Number.isFinite(bodyweight ?? NaN) ? bodyweight : undefined,
 					reps: todaysLog.reps,
 					completed: true,
 					timestamp: todaysLog.timestamp
@@ -63,6 +79,7 @@ export function createSession(
 			return {
 				setNumber,
 				weight: defaultWeight,
+				bodyweight: Number.isFinite(latestBodyweight ?? NaN) ? latestBodyweight : undefined,
 				reps: defaultReps,
 				completed: false,
 				timestamp: null
@@ -80,6 +97,7 @@ type ExerciseSession = {
 	sets: HistoryEntry[];
 	complete: boolean;
 	averageWeight: number;
+	averageReps: number;
 	minReps: number;
 	maxReps: number;
 };
@@ -216,6 +234,8 @@ function summarizeExerciseSessions(history: HistoryEntry[]): ExerciseSession[] {
 		const complete = trimmedSets.length >= SETS_PER_EXERCISE;
 		const averageWeight =
 			trimmedSets.reduce((total, set) => total + set.weight, 0) / (trimmedSets.length || 1);
+		const averageReps =
+			trimmedSets.reduce((total, set) => total + set.reps, 0) / (trimmedSets.length || 1);
 		const reps = trimmedSets.map((set) => set.reps);
 		const minReps = reps.length ? Math.min(...reps) : 0;
 		const maxReps = reps.length ? Math.max(...reps) : 0;
@@ -225,6 +245,7 @@ function summarizeExerciseSessions(history: HistoryEntry[]): ExerciseSession[] {
 			sets: trimmedSets,
 			complete,
 			averageWeight: Number.isFinite(averageWeight) ? Number(averageWeight.toFixed(1)) : 0,
+			averageReps: Number.isFinite(averageReps) ? Number(averageReps.toFixed(1)) : 0,
 			minReps,
 			maxReps
 		};
@@ -238,6 +259,170 @@ function summarizeExerciseSessions(history: HistoryEntry[]): ExerciseSession[] {
 function roundDownToIncrement(value: number, increment = 0.5) {
 	const factor = Math.floor(value / increment);
 	return Number((factor * increment).toFixed(1));
+}
+
+export type OneRmEstimate = {
+	estimate: number;
+	ciHalf: number;
+	medianWeight: number;
+	medianReps: number;
+	sessionCount: number;
+};
+
+type OneRmFormula = {
+	method: 'epley' | 'lombardi';
+	correction: number;
+	see: (reps: number) => number;
+};
+
+const clampRepsForSee = (reps: number) => Math.max(3, reps);
+
+const median = (values: number[]) => {
+	if (!values.length) return 0;
+	const sorted = [...values].sort((a, b) => a - b);
+	const mid = Math.floor(sorted.length / 2);
+	if (sorted.length % 2 === 1) return sorted[mid];
+	return (sorted[mid - 1] + sorted[mid]) / 2;
+};
+
+const pullUpSessionStats = (session: ExerciseSession) => {
+	const bodyweights = session.sets
+		.map((set) => set.bodyweight)
+		.filter((value): value is number => Number.isFinite(value));
+	const bodyweight = bodyweights.length ? median(bodyweights) : null;
+	const averageAdded =
+		session.sets.reduce((total, set) => total + set.weight, 0) / (session.sets.length || 1);
+	const totalLoad = bodyweight === null ? averageAdded : averageAdded + bodyweight;
+	return {
+		addedLoad: Number.isFinite(averageAdded) ? averageAdded : 0,
+		totalLoad: Number.isFinite(totalLoad) ? totalLoad : 0,
+		bodyweight
+	};
+};
+
+const resolveFormula = (exerciseName: string): OneRmFormula | null => {
+	const name = exerciseName.toLowerCase();
+
+	if (name.includes('deadlift')) {
+		return {
+			method: 'epley',
+			correction: 1.04,
+			see: (reps) => {
+				const r = clampRepsForSee(reps);
+				return r <= 8 ? 3.5 + 1.5 * (r - 3) : 11.0;
+			}
+		};
+	}
+
+	if (name.includes('squat')) {
+		return {
+			method: 'lombardi',
+			correction: 1.0,
+			see: (reps) => {
+				const r = clampRepsForSee(reps);
+				return r <= 8 ? 3.0 + 1.5 * (r - 3) : 9.0;
+			}
+		};
+	}
+
+	if (name.includes('bench press')) {
+		return {
+			method: 'lombardi',
+			correction: 1.0,
+			see: (reps) => {
+				const r = clampRepsForSee(reps);
+				return r <= 10 ? 2.0 + 0.7 * (r - 3) : 7.5;
+			}
+		};
+	}
+
+	if (name.includes('shoulder press') || name.includes('overhead press')) {
+		return {
+			method: 'epley',
+			correction: 1.04,
+			see: (reps) => {
+				const r = clampRepsForSee(reps);
+				return r <= 10 ? 2.5 + 0.5 * (r - 3) : 6.5;
+			}
+		};
+	}
+
+	if (name.includes('row')) {
+		return {
+			method: 'lombardi',
+			correction: 0.93,
+			see: (reps) => {
+				const r = clampRepsForSee(reps);
+				return r <= 10 ? 2.5 + 1.0 * (r - 3) : 7.0;
+			}
+		};
+	}
+
+	if (name.includes('chin up') || name.includes('pull up')) {
+		return {
+			method: 'epley',
+			correction: 1.0,
+			see: (reps) => {
+				const r = clampRepsForSee(reps);
+				return r <= 10 ? 2.0 + 1.0 * (r - 3) : 6.0;
+			}
+		};
+	}
+
+	return null;
+};
+
+export function getExerciseOneRmEstimate(
+	exerciseName: string,
+	history: HistoryEntry[]
+): OneRmEstimate | null {
+	const formula = resolveFormula(exerciseName);
+	if (!formula) return null;
+
+	const workoutHistory = history.filter((h) => (h.type ?? 'workout') === 'workout');
+	const exerciseHistory = workoutHistory.filter((h) => h.exercise === exerciseName);
+	const sessions = summarizeExerciseSessions(exerciseHistory);
+	const recent = sessions.slice(0, 3);
+	if (!recent.length) return null;
+
+	const isPullUp = isPullUpExercise(exerciseName);
+	const pullUpStats = isPullUp
+		? recent.map((session) => pullUpSessionStats(session))
+		: [];
+	const medianWeight = isPullUp
+		? median(pullUpStats.map((stats) => stats.addedLoad))
+		: median(recent.map((session) => session.averageWeight));
+	const medianReps = median(recent.map((session) => session.averageReps));
+	if (!Number.isFinite(medianWeight) || !Number.isFinite(medianReps) || medianReps <= 0) {
+		return null;
+	}
+
+	const base =
+		formula.method === 'epley'
+			? (isPullUp ? median(pullUpStats.map((stats) => stats.totalLoad)) : medianWeight) *
+				(1 + medianReps / 30)
+			: medianWeight * Math.pow(medianReps, 0.1);
+	const estimateTotal = base * formula.correction;
+	const medianBodyweight = isPullUp
+		? median(
+				pullUpStats
+					.map((stats) => stats.bodyweight)
+					.filter((value): value is number => Number.isFinite(value))
+			)
+		: null;
+	const estimate =
+		isPullUp && Number.isFinite(medianBodyweight ?? NaN)
+			? estimateTotal - (medianBodyweight as number)
+			: estimateTotal;
+	const ciHalf = 1.96 * formula.see(medianReps);
+
+	return {
+		estimate: Number(estimate.toFixed(1)),
+		ciHalf: Number(ciHalf.toFixed(1)),
+		medianWeight: Number(medianWeight.toFixed(1)),
+		medianReps: Number(medianReps.toFixed(1)),
+		sessionCount: recent.length
+	};
 }
 
 function clamp(value: number, min: number, max: number) {

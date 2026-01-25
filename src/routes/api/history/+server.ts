@@ -22,6 +22,7 @@ const isValidEntry = (entry: unknown): entry is HistoryEntry => {
 		typeof candidate.exercise === 'string' &&
 		typeof candidate.setNumber === 'number' &&
 		typeof candidate.weight === 'number' &&
+		(candidate.bodyweight === undefined || typeof candidate.bodyweight === 'number') &&
 		typeof candidate.reps === 'number' &&
 		typeof candidate.timestamp === 'string'
 	);

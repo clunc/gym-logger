@@ -3,19 +3,17 @@
 	import ExerciseCard from '$lib/components/ExerciseCard.svelte';
 	import HistoryList from '$lib/components/HistoryList.svelte';
 	import RestTimer from '$lib/components/RestTimer.svelte';
-import {
-	appendHistory,
-	deleteHistoryEntry,
-	fetchHistory
-} from '$lib/api/history';
-import {
-	createSession,
-	getNextSessionProgression,
-	REST_SECONDS,
+	import { appendHistory, deleteHistoryEntry, fetchHistory } from '$lib/api/history';
+	import {
+		createSession,
+		getExerciseOneRmEstimate,
+		getNextSessionProgression,
+		REST_SECONDS,
 		todayString,
 		workoutTemplate
 	} from '$lib/workout';
 	import type { HistoryEntry, ProgressionAdvice, SessionExercise } from '$lib/types';
+	import type { OneRmEstimate } from '$lib/workout';
 
 	let history: HistoryEntry[] = [];
 	let currentSession: SessionExercise[] = [];
@@ -40,6 +38,7 @@ import {
 	let monthlyWorkouts = 0;
 	let todaySickEntry: HistoryEntry | undefined;
 	let nextProgressions: (ProgressionAdvice | null)[] = [];
+	let oneRmEstimates: (OneRmEstimate | null)[] = [];
 
 	function computeNextProgressions() {
 		return currentSession.map((exercise) => {
@@ -47,6 +46,10 @@ import {
 			if (!template) return null;
 			return getNextSessionProgression(template, history);
 		});
+	}
+
+	function computeOneRmEstimates() {
+		return currentSession.map((exercise) => getExerciseOneRmEstimate(exercise.name, history));
 	}
 
 	onMount(async () => {
@@ -59,6 +62,7 @@ import {
 			loadError = 'Could not load history. Changes will not be saved.';
 		} finally {
 			currentSession = createSession(history, resolvedTemplate);
+			oneRmEstimates = computeOneRmEstimates();
 			restoreRestTimer();
 			syncRestTimerFromHistory();
 			ready = true;
@@ -92,6 +96,7 @@ import {
 			history = latest.history;
 			resolvedTemplate = latest.template?.length ? latest.template : resolvedTemplate;
 			currentSession = mergeInProgressSession(createSession(history, resolvedTemplate));
+			oneRmEstimates = computeOneRmEstimates();
 			syncRestTimerFromHistory();
 		} catch (error) {
 			console.error('Failed to refresh history', error);
@@ -108,11 +113,29 @@ import {
 		currentSession = [...currentSession];
 	}
 
+	function adjustBodyweight(exerciseIdx: number, setIdx: number, delta: number) {
+		const set = currentSession[exerciseIdx].sets[setIdx];
+		if (set.completed) return;
+
+		const base = Number.isFinite(set.bodyweight ?? NaN) ? (set.bodyweight as number) : 0;
+		const next = Math.max(0, base + delta);
+		set.bodyweight = Number(next.toFixed(1));
+		currentSession = [...currentSession];
+	}
+
 	function setWeightFromInput(exerciseIdx: number, setIdx: number, value: number | null) {
 		const set = currentSession[exerciseIdx].sets[setIdx];
 		if (set.completed) return;
 
 		set.weight = value === null ? NaN : value;
+		currentSession = [...currentSession];
+	}
+
+	function setBodyweightFromInput(exerciseIdx: number, setIdx: number, value: number | null) {
+		const set = currentSession[exerciseIdx].sets[setIdx];
+		if (set.completed) return;
+
+		set.bodyweight = value === null ? NaN : value;
 		currentSession = [...currentSession];
 	}
 
@@ -151,15 +174,20 @@ import {
 			setNumber: set.setNumber,
 			weight: set.weight,
 			reps: set.reps,
-			timestamp: set.timestamp
+			timestamp: set.timestamp,
+			...(Number.isFinite(set.bodyweight ?? NaN) ? { bodyweight: set.bodyweight } : {})
 		};
 
 		history = [entry, ...history];
+		oneRmEstimates = computeOneRmEstimates();
 
 		const nextSet = exercise.sets[setIdx + 1];
 		if (nextSet && !nextSet.completed) {
 			nextSet.weight = set.weight;
 			nextSet.reps = set.reps;
+			if (Number.isFinite(set.bodyweight ?? NaN)) {
+				nextSet.bodyweight = set.bodyweight;
+			}
 		}
 
 		currentSession = [...currentSession];
@@ -205,6 +233,7 @@ import {
 			history.splice(index, 1);
 			history = [...history];
 		}
+		oneRmEstimates = computeOneRmEstimates();
 
 		set.completed = false;
 		set.timestamp = null;
@@ -331,7 +360,10 @@ import {
 				if (!set.completed && !currentSet.completed) {
 					const weight = Number.isFinite(currentSet.weight) ? currentSet.weight : set.weight;
 					const reps = Number.isFinite(currentSet.reps) ? currentSet.reps : set.reps;
-					return { ...set, weight, reps };
+					const bodyweight = Number.isFinite(currentSet.bodyweight ?? NaN)
+						? currentSet.bodyweight
+						: set.bodyweight;
+					return { ...set, weight, reps, bodyweight };
 				}
 
 				return set;
@@ -346,6 +378,7 @@ import {
 		currentSession;
 		history;
 		nextProgressions = computeNextProgressions();
+		oneRmEstimates = computeOneRmEstimates();
 	}
 
 	$: todaysHistory = history.filter(
@@ -558,10 +591,13 @@ import {
 					{exercise}
 					{exerciseIdx}
 					nextProgression={nextProgressions[exerciseIdx]}
+					oneRmEstimate={oneRmEstimates[exerciseIdx]}
 					onAdjustWeight={adjustWeight}
 					onAdjustReps={adjustReps}
+					onAdjustBodyweight={adjustBodyweight}
 					onSetWeight={setWeightFromInput}
 					onSetReps={setRepsFromInput}
+					onSetBodyweight={setBodyweightFromInput}
 					onLogSet={logSet}
 					onUndoSet={undoSet}
 				/>
