@@ -510,7 +510,14 @@
 
 		hasToday = loggedDays.has(todayString());
 
-		const weekCounts = Array.from(loggedDays).reduce((map, day) => {
+		const workoutDays = history
+			.filter((entry) => (entry.type ?? 'workout') === 'workout')
+			.reduce((set, entry) => {
+				set.add(dateKey(entry.timestamp));
+				return set;
+			}, new Set<string>());
+
+		const weekCounts = Array.from(workoutDays).reduce((map, day) => {
 			const key = weekKey(new Date(day));
 			map.set(key, (map.get(key) || 0) + 1);
 			return map;
@@ -521,21 +528,15 @@
 		const thisWeekCount = weekCounts.get(thisWeekKey) || 0;
 		weeklyTargetMet = thisWeekCount >= WEEKLY_STREAK_TARGET;
 
-		const workoutDays = history
-			.filter((entry) => (entry.type ?? 'workout') === 'workout')
-			.reduce((set, entry) => {
-				set.add(dateKey(entry.timestamp));
-				return set;
-			}, new Set<string>());
-
 		const orderedWorkoutDates = Array.from(workoutDays)
 			.map((value) => new Date(value))
 			.sort((a, b) => b.getTime() - a.getTime());
 
 		let count = 0;
 		for (const workoutDay of orderedWorkoutDates) {
-			const weekTotal = weekCounts.get(weekKey(workoutDay)) || 0;
-			if (weekTotal < WEEKLY_STREAK_TARGET) break;
+			const week = weekKey(workoutDay);
+			const weekTotal = weekCounts.get(week) || 0;
+			if (week !== thisWeekKey && weekTotal < WEEKLY_STREAK_TARGET) break;
 			count += 1;
 		}
 		streakCount = count;
@@ -610,7 +611,7 @@
 						{streakCount} day{streakCount === 1 ? '' : 's'}
 					</div>
 					<div class="card-sub">
-						{weeklyTargetMet ? 'Weekly rule met (2+ days logged)' : 'Log 2 days to protect streak'}
+						{weeklyTargetMet ? 'Weekly rule met (2+ workouts logged)' : 'Log 2 workouts to protect streak'}
 					</div>
 				</div>
 				<div class="summary-card">
