@@ -31,6 +31,7 @@
 			: 0;
 	$: nextLabel = buildNextLabel(nextProgression, nextDelta);
 	$: nextStatusClass = buildNextStatusClass(nextProgression, nextDelta);
+	$: hasCompletedAllSets = exercise.sets.length > 0 && exercise.sets.every((set) => set.completed);
 
 	function computeHoldDelta(progress: ProgressionAdvice | null) {
 		if (!progress) return 0;
@@ -104,7 +105,7 @@
 			</div>
 		</div>
 		<div class="pill-group">
-			{#if nextProgression}
+			{#if nextProgression && hasCompletedAllSets}
 				<div class={`next-pill ${nextProgression.action} ${nextStatusClass}`}>
 					{nextLabel}
 				</div>
