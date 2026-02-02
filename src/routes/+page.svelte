@@ -39,6 +39,8 @@
 	let todaySickEntry: HistoryEntry | undefined;
 	let nextProgressions: (ProgressionAdvice | null)[] = [];
 	let oneRmEstimates: (OneRmEstimate | null)[] = [];
+	let coreSession: SessionExercise[] = [];
+	let optionalSession: SessionExercise[] = [];
 
 	function computeNextProgressions() {
 		return currentSession.map((exercise) => {
@@ -50,6 +52,10 @@
 
 	function computeOneRmEstimates() {
 		return currentSession.map((exercise) => getExerciseOneRmEstimate(exercise.name, history));
+	}
+
+	function getExerciseIdxByName(name: string) {
+		return currentSession.findIndex((item) => item.name === name);
 	}
 
 	onMount(async () => {
@@ -354,6 +360,8 @@
 		history;
 		nextProgressions = computeNextProgressions();
 		oneRmEstimates = computeOneRmEstimates();
+		coreSession = currentSession.filter((exercise) => !exercise.optional);
+		optionalSession = currentSession.filter((exercise) => exercise.optional);
 	}
 
 	$: todaysHistory = history.filter(
@@ -622,20 +630,43 @@
 					</div>
 				</div>
 			</div>
-			{#each currentSession as exercise, exerciseIdx}
-				<ExerciseCard
-					{exercise}
-					{exerciseIdx}
-					nextProgression={nextProgressions[exerciseIdx]}
-					oneRmEstimate={oneRmEstimates[exerciseIdx]}
-					onAdjustWeight={adjustWeight}
-					onAdjustReps={adjustReps}
-					onSetWeight={setWeightFromInput}
-					onSetReps={setRepsFromInput}
-					onLogSet={logSet}
-					onUndoSet={undoSet}
-				/>
-			{/each}
+			{#if coreSession.length}
+				<div class="section-title">Core</div>
+				{#each coreSession as exercise}
+					{@const index = getExerciseIdxByName(exercise.name)}
+					<ExerciseCard
+						{exercise}
+						exerciseIdx={index}
+						nextProgression={nextProgressions[index]}
+						oneRmEstimate={oneRmEstimates[index]}
+						onAdjustWeight={adjustWeight}
+						onAdjustReps={adjustReps}
+						onSetWeight={setWeightFromInput}
+						onSetReps={setRepsFromInput}
+						onLogSet={logSet}
+						onUndoSet={undoSet}
+					/>
+				{/each}
+			{/if}
+
+			{#if optionalSession.length}
+				<div class="section-title">Optional</div>
+				{#each optionalSession as exercise}
+					{@const index = getExerciseIdxByName(exercise.name)}
+					<ExerciseCard
+						{exercise}
+						exerciseIdx={index}
+						nextProgression={nextProgressions[index]}
+						oneRmEstimate={oneRmEstimates[index]}
+						onAdjustWeight={adjustWeight}
+						onAdjustReps={adjustReps}
+						onSetWeight={setWeightFromInput}
+						onSetReps={setRepsFromInput}
+						onLogSet={logSet}
+						onUndoSet={undoSet}
+					/>
+				{/each}
+			{/if}
 
 			<HistoryList entries={todaysHistory} />
 			<div class="status-row">
@@ -701,6 +732,15 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
+	}
+
+	.section-title {
+		margin: 18px 0 10px;
+		font-size: 15px;
+		font-weight: 700;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: #64748b;
 	}
 
 	.pill {

@@ -20,6 +20,8 @@ export type SessionExercise = {
 	sets: SetEntry[];
 	defaultWeight: number;
 	defaultReps: number;
+	setCount?: number;
+	optional?: boolean;
 	progression?: ProgressionAdvice;
 };
 

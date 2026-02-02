@@ -11,7 +11,9 @@ export const workoutTemplate: SessionExercise[] = [
 	{ name: 'Shoulder Press', sets: [], defaultWeight: 50, defaultReps: 5 },
 	{ name: 'Chin Up', sets: [], defaultWeight: 0, defaultReps: 5 },
 	{ name: 'Bench Press', sets: [], defaultWeight: 63, defaultReps: 5 },
-	{ name: 'Bent Over Rows', sets: [], defaultWeight: 64, defaultReps: 5 }
+	{ name: 'Bent Over Rows', sets: [], defaultWeight: 64, defaultReps: 5 },
+	{ name: 'Lateral Raises', sets: [], defaultWeight: 4, defaultReps: 12, setCount: 2, optional: true },
+	{ name: 'Face Pulls', sets: [], defaultWeight: 15, defaultReps: 12, setCount: 2, optional: true }
 ];
 
 export const todayString = () => new Date().toDateString();
@@ -47,7 +49,8 @@ export function createSession(
 	const cloneSet = (template: SessionExercise): SessionExercise => {
 		const { baseWeight, defaultReps, progression } = computeProgression(template, workoutHistory, today);
 		const defaultWeight = baseWeight;
-		const sets: SetEntry[] = Array.from({ length: SETS_PER_EXERCISE }, (_, idx) => {
+		const setCount = template.setCount ?? SETS_PER_EXERCISE;
+		const sets: SetEntry[] = Array.from({ length: setCount }, (_, idx) => {
 			const setNumber = idx + 1;
 			const todaysLog = workoutHistory.find(
 				(h) =>
@@ -101,6 +104,12 @@ function getRepRange(exerciseName: string): RepRange {
 	if (lowerFatigueGroup.includes(exerciseName)) {
 		return { lower: 5, upper: 8 };
 	}
+	const accessoryHighRep =
+		exerciseName.toLowerCase().includes('lateral raise') ||
+		exerciseName.toLowerCase().includes('face pull');
+	if (accessoryHighRep) {
+		return { lower: 12, upper: 15 };
+	}
 	return { lower: 6, upper: 10 };
 }
 
@@ -143,7 +152,7 @@ export function computeProgression(
 		};
 	}
 
-	const sessions = summarizeExerciseSessions(exerciseHistory);
+	const sessions = summarizeExerciseSessions(exerciseHistory, template.setCount ?? SETS_PER_EXERCISE);
 	const lastComplete = sessions.find((session) => session.complete);
 	const baseWeight = lastComplete
 		? lastComplete.averageWeight
@@ -207,7 +216,10 @@ export function computeProgression(
 	return { baseWeight: advice.suggestedWeight, defaultReps, progression: advice };
 }
 
-function summarizeExerciseSessions(history: HistoryEntry[]): ExerciseSession[] {
+function summarizeExerciseSessions(
+	history: HistoryEntry[],
+	setCount: number = SETS_PER_EXERCISE
+): ExerciseSession[] {
 	const byDate = new Map<string, HistoryEntry[]>();
 
 	for (const entry of history) {
@@ -219,8 +231,8 @@ function summarizeExerciseSessions(history: HistoryEntry[]): ExerciseSession[] {
 
 	const sessions: ExerciseSession[] = Array.from(byDate.entries()).map(([dateKey, sets]) => {
 		const sortedSets = sets.sort((a, b) => a.setNumber - b.setNumber);
-		const trimmedSets = sortedSets.slice(0, SETS_PER_EXERCISE);
-		const complete = trimmedSets.length >= SETS_PER_EXERCISE;
+		const trimmedSets = sortedSets.slice(0, setCount);
+		const complete = trimmedSets.length >= setCount;
 		const averageWeight =
 			trimmedSets.reduce((total, set) => total + set.weight, 0) / (trimmedSets.length || 1);
 		const averageReps =
