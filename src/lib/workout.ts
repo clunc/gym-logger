@@ -171,7 +171,7 @@ export function computeProgression(
 	let advice: ProgressionAdvice;
 
 	if (hitsUpperBound) {
-		const suggested = roundDownToIncrement(baseWeight * 1.025);
+		const suggested = roundUpToIncrement(baseWeight * 1.025);
 		advice = {
 			action: 'increase',
 			message: `All sets at ${repRange.upper}+ last session — nudged weight up by ~2.5%.`,
@@ -259,6 +259,11 @@ function summarizeExerciseSessions(
 
 function roundDownToIncrement(value: number, increment = 0.5) {
 	const factor = Math.floor(value / increment);
+	return Number((factor * increment).toFixed(1));
+}
+
+function roundUpToIncrement(value: number, increment = 0.5) {
+	const factor = Math.ceil(value / increment);
 	return Number((factor * increment).toFixed(1));
 }
 
