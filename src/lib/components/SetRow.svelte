@@ -13,6 +13,34 @@
 
 	const weightId = `weight-${exerciseIdx}-${setIdx}`;
 	const repsId = `reps-${exerciseIdx}-${setIdx}`;
+	const BAR_WEIGHT_KG = 20;
+	const PLATE_SIZES_KG = [25, 20, 15, 10, 5, 2.5, 1.5, 1, 0.5, 0.25];
+	const PLATE_PAIRS: Record<number, number> = {
+		25: 1,
+		20: 1,
+		15: 1,
+		10: 1,
+		5: 1,
+		2.5: 1,
+		1.5: 1,
+		1: 1,
+		0.5: 1,
+		0.25: 1
+	};
+
+	type PlateSvgItem = {
+		size: number;
+		x: number;
+		diameter: number;
+		fill: string;
+		text: string;
+	};
+
+	type PlateBreakdown = {
+		plates: number[];
+		message: string;
+		isValid: boolean;
+	};
 
 	const toNumberOrNull = (value: string) => {
 		if (value.trim() === '') return null;
@@ -29,6 +57,82 @@
 		const target = event.currentTarget as HTMLInputElement;
 		onSetReps(exerciseIdx, setIdx, toNumberOrNull(target.value));
 	}
+
+	function buildPlateBreakdown(totalWeight: number): PlateBreakdown {
+		if (!Number.isFinite(totalWeight) || totalWeight <= 0) {
+			return { plates: [], message: 'No load', isValid: false };
+		}
+
+		if (totalWeight < BAR_WEIGHT_KG) {
+			return { plates: [], message: `Below ${BAR_WEIGHT_KG} kg bar`, isValid: false };
+		}
+
+		const perSide = (totalWeight - BAR_WEIGHT_KG) / 2;
+		if (perSide <= 0) {
+			return { plates: [], message: 'Bar only', isValid: true };
+		}
+
+		const plates: number[] = [];
+		let remaining = Number(perSide.toFixed(2));
+		const epsilon = 0.01;
+
+		for (const size of PLATE_SIZES_KG) {
+			const maxPerSide = PLATE_PAIRS[size] ?? Infinity;
+			while (plates.filter((plate) => plate === size).length < maxPerSide && remaining + epsilon >= size) {
+				plates.push(size);
+				remaining = Number((remaining - size).toFixed(2));
+			}
+		}
+
+		if (remaining > epsilon) {
+			return { plates: [], message: 'Cannot match plate sizes', isValid: false };
+		}
+
+		return { plates, message: 'Plates per side', isValid: true };
+	}
+
+	function getPlateColor(size: number) {
+		if (size === 25) return { fill: '#ef4444', text: '#ffffff' };
+		if (size === 20) return { fill: '#2563eb', text: '#ffffff' };
+		if (size === 15) return { fill: '#f59e0b', text: '#1f2937' };
+		if (size === 10) return { fill: '#22c55e', text: '#0f172a' };
+		if (size === 5) return { fill: '#9ca3af', text: '#0f172a' };
+		if (size === 2.5) return { fill: '#ef4444', text: '#ffffff' };
+		if (size === 1.5) return { fill: '#f59e0b', text: '#1f2937' };
+		if (size === 1) return { fill: '#22c55e', text: '#0f172a' };
+		if (size === 0.5) return { fill: '#f8fafc', text: '#0f172a' };
+		if (size === 0.25) return { fill: '#9ca3af', text: '#0f172a' };
+		return { fill: '#e5e7eb', text: '#0f172a' };
+	}
+
+	function getPlateDiameter(size: number) {
+		if (size >= 5) return 52;
+		return 36;
+	}
+
+	function buildPlateLayout(plates: number[]) {
+		let x = 0;
+		const gap = 12;
+		const items: PlateSvgItem[] = plates.map((size) => {
+			const diameter = getPlateDiameter(size);
+			const colors = getPlateColor(size);
+			const item = {
+				size,
+				x,
+				diameter,
+				fill: colors.fill,
+				text: colors.text
+			};
+			x += diameter + gap;
+			return item;
+		});
+		return { items, totalWidth: Math.max(x - gap, 0) };
+	}
+
+	$: plateBreakdown =
+		Number.isFinite(set.weight) && set.weight >= BAR_WEIGHT_KG
+			? buildPlateBreakdown(set.weight)
+			: { plates: [], message: '', isValid: false };
 </script>
 
 <div class="set-row">
@@ -92,6 +196,44 @@
 			{/if}
 		</div>
 	</div>
+
+	{#if plateBreakdown.isValid}
+		<div class="plate-row">
+			<span class="plate-label">{plateBreakdown.message}</span>
+			{#if plateBreakdown.plates.length === 0}
+				<span class="plate-bar">Bar only</span>
+			{:else}
+				{@const layout = buildPlateLayout(plateBreakdown.plates)}
+				<div class="plate-visual">
+				<svg class="plate-stack" viewBox={`0 0 ${layout.totalWidth} 72`} role="img" aria-label="Plates per side">
+					{#each layout.items as item (`${item.x}-${item.size}`)}
+						<circle
+							cx={item.x + item.diameter / 2}
+							cy="36"
+							r={item.diameter / 2}
+							fill={item.fill}
+							stroke="rgba(15, 23, 42, 0.2)"
+							stroke-width="1"
+						/>
+						<text
+							x={item.x + item.diameter / 2}
+							y="40"
+							text-anchor="middle"
+							font-size="11"
+							font-weight="800"
+							fill="#ffffff"
+							stroke="rgba(0, 0, 0, 0.45)"
+							stroke-width="1.2"
+							paint-order="stroke"
+							>
+								{item.size}
+							</text>
+						{/each}
+					</svg>
+				</div>
+			{/if}
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -137,6 +279,54 @@
 		align-items: center;
 	}
 
+	.plate-row {
+		display: flex;
+		align-items: center;
+		flex-wrap: wrap;
+		gap: 6px;
+		padding: 2px 2px 4px;
+	}
+
+	.plate-label {
+		font-size: 11px;
+		font-weight: 700;
+		color: #64748b;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+		margin-right: 4px;
+	}
+
+	.plate-bar {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		padding: 3px 8px;
+		border-radius: 999px;
+		font-size: 11px;
+		font-weight: 700;
+		color: #0f172a;
+		border: 1px solid rgba(15, 23, 42, 0.12);
+		background: #e2e8f0;
+	}
+
+	.plate-stack {
+		height: 72px;
+		width: auto;
+		max-width: 100%;
+		overflow: visible;
+	}
+
+	.plate-visual {
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		padding: 10px 12px;
+		border-radius: 14px;
+		border: 1px solid #e2e8f0;
+		background: #f8fafc;
+		width: 100%;
+		overflow-x: auto;
+	}
 
 	.set-input-group {
 		display: flex;
