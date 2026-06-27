@@ -1,5 +1,11 @@
 <script lang="ts">
 	import type { SetEntry } from '$lib/types';
+	import {
+		BAR_WEIGHT_KG,
+		buildPlateBreakdown,
+		getPlateColor,
+		getPlateDiameter
+	} from '$lib/plates';
 
 	export let set: SetEntry;
 	export let exerciseIdx: number;
@@ -13,20 +19,6 @@
 
 	const weightId = `weight-${exerciseIdx}-${setIdx}`;
 	const repsId = `reps-${exerciseIdx}-${setIdx}`;
-	const BAR_WEIGHT_KG = 20;
-	const PLATE_SIZES_KG = [25, 20, 15, 10, 5, 2.5, 1.5, 1, 0.5, 0.25];
-	const PLATE_PAIRS: Record<number, number> = {
-		25: 1,
-		20: 1,
-		15: 1,
-		10: 1,
-		5: 1,
-		2.5: 1,
-		1.5: 1,
-		1: 1,
-		0.5: 1,
-		0.25: 1
-	};
 
 	type PlateSvgItem = {
 		size: number;
@@ -34,12 +26,6 @@
 		diameter: number;
 		fill: string;
 		text: string;
-	};
-
-	type PlateBreakdown = {
-		plates: number[];
-		message: string;
-		isValid: boolean;
 	};
 
 	const toNumberOrNull = (value: string) => {
@@ -56,58 +42,6 @@
 	function handleRepsInput(event: Event) {
 		const target = event.currentTarget as HTMLInputElement;
 		onSetReps(exerciseIdx, setIdx, toNumberOrNull(target.value));
-	}
-
-	function buildPlateBreakdown(totalWeight: number): PlateBreakdown {
-		if (!Number.isFinite(totalWeight) || totalWeight <= 0) {
-			return { plates: [], message: 'No load', isValid: false };
-		}
-
-		if (totalWeight < BAR_WEIGHT_KG) {
-			return { plates: [], message: `Below ${BAR_WEIGHT_KG} kg bar`, isValid: false };
-		}
-
-		const perSide = (totalWeight - BAR_WEIGHT_KG) / 2;
-		if (perSide <= 0) {
-			return { plates: [], message: 'Bar only', isValid: true };
-		}
-
-		const plates: number[] = [];
-		let remaining = Number(perSide.toFixed(2));
-		const epsilon = 0.01;
-
-		for (const size of PLATE_SIZES_KG) {
-			const maxPerSide = PLATE_PAIRS[size] ?? Infinity;
-			while (plates.filter((plate) => plate === size).length < maxPerSide && remaining + epsilon >= size) {
-				plates.push(size);
-				remaining = Number((remaining - size).toFixed(2));
-			}
-		}
-
-		if (remaining > epsilon) {
-			return { plates: [], message: 'Cannot match plate sizes', isValid: false };
-		}
-
-		return { plates, message: 'Plates per side', isValid: true };
-	}
-
-	function getPlateColor(size: number) {
-		if (size === 25) return { fill: '#ef4444', text: '#ffffff' };
-		if (size === 20) return { fill: '#2563eb', text: '#ffffff' };
-		if (size === 15) return { fill: '#f59e0b', text: '#1f2937' };
-		if (size === 10) return { fill: '#22c55e', text: '#0f172a' };
-		if (size === 5) return { fill: '#9ca3af', text: '#0f172a' };
-		if (size === 2.5) return { fill: '#ef4444', text: '#ffffff' };
-		if (size === 1.5) return { fill: '#f59e0b', text: '#1f2937' };
-		if (size === 1) return { fill: '#22c55e', text: '#0f172a' };
-		if (size === 0.5) return { fill: '#f8fafc', text: '#0f172a' };
-		if (size === 0.25) return { fill: '#9ca3af', text: '#0f172a' };
-		return { fill: '#e5e7eb', text: '#0f172a' };
-	}
-
-	function getPlateDiameter(size: number) {
-		if (size >= 5) return 52;
-		return 36;
 	}
 
 	function buildPlateLayout(plates: number[]) {
@@ -221,7 +155,7 @@
 							text-anchor="middle"
 							font-size="11"
 							font-weight="800"
-							fill="#ffffff"
+							fill={item.text}
 							stroke="rgba(0, 0, 0, 0.45)"
 							stroke-width="1.2"
 							paint-order="stroke"
