@@ -1,4 +1,5 @@
 import type { HistoryEntry, ProgressionAdvice, SessionExercise, SetEntry } from './types';
+import { WEIGHT_INCREMENT_KG } from './plates';
 
 export const SETS_PER_EXERCISE = 3;
 export const REST_SECONDS = 90;
@@ -257,12 +258,12 @@ function summarizeExerciseSessions(
 	);
 }
 
-function roundDownToIncrement(value: number, increment = 0.5) {
+function roundDownToIncrement(value: number, increment = WEIGHT_INCREMENT_KG) {
 	const factor = Math.floor(value / increment);
 	return Number((factor * increment).toFixed(1));
 }
 
-function roundUpToIncrement(value: number, increment = 0.5) {
+function roundUpToIncrement(value: number, increment = WEIGHT_INCREMENT_KG) {
 	const factor = Math.ceil(value / increment);
 	return Number((factor * increment).toFixed(1));
 }

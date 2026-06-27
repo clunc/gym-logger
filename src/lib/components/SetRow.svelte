@@ -2,6 +2,7 @@
 	import type { SetEntry } from '$lib/types';
 	import {
 		BAR_WEIGHT_KG,
+		WEIGHT_INCREMENT_KG,
 		buildPlateBreakdown,
 		getPlateColor,
 		getPlateDiameter
@@ -78,12 +79,12 @@
 		<div class="set-input-group">
 			<label class="set-input-label" for={weightId}>Weight (kg)</label>
 			<div class="input-with-buttons">
-				<button class="adjust-btn" on:click={() => onAdjustWeight(exerciseIdx, setIdx, -0.5)} disabled={set.completed} type="button">
+				<button class="adjust-btn" on:click={() => onAdjustWeight(exerciseIdx, setIdx, -WEIGHT_INCREMENT_KG)} disabled={set.completed} type="button">
 					−
 				</button>
 				<input
 					type="number"
-					step="0.5"
+					step={WEIGHT_INCREMENT_KG}
 					class="set-input"
 					class:completed={set.completed}
 					value={Number.isFinite(set.weight) ? set.weight : ''}
@@ -93,7 +94,7 @@
 					id={weightId}
 					on:input={handleWeightInput}
 				/>
-				<button class="adjust-btn" on:click={() => onAdjustWeight(exerciseIdx, setIdx, 0.5)} disabled={set.completed} type="button">
+				<button class="adjust-btn" on:click={() => onAdjustWeight(exerciseIdx, setIdx, WEIGHT_INCREMENT_KG)} disabled={set.completed} type="button">
 					+
 				</button>
 			</div>

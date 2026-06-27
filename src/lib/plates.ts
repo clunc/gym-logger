@@ -35,6 +35,14 @@ export const PLATE_INVENTORY: PlateSpec[] = [
 const PLATE_BY_SIZE = new Map(PLATE_INVENTORY.map((plate) => [plate.size, plate]));
 const FALLBACK_COLOR = { fill: '#e5e7eb', text: '#0f172a' };
 
+/**
+ * Smallest loadable change in total bar weight: the smallest plate, loaded on
+ * both sides. With a 0.5 kg plate that's a 1 kg total step — anything finer
+ * can't actually be put on the bar, so weight controls and progression snap
+ * to this so every suggested weight is loadable.
+ */
+export const WEIGHT_INCREMENT_KG = Math.min(...PLATE_INVENTORY.map((plate) => plate.size)) * 2;
+
 export type PlateBreakdown = {
 	plates: number[];
 	message: string;
