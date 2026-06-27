@@ -20,13 +20,13 @@ export type PlateSpec = {
 // Big discs are effectively unlimited (greedy stacks singles, then doubles, …);
 // change plates we own exactly one of each, so they only finish the last <5 kg.
 export const PLATE_INVENTORY: PlateSpec[] = [
-	{ size: 25, limit: Infinity, fill: '#7D3A3E', text: '#ffffff' },
-	{ size: 20, limit: Infinity, fill: '#324F6C', text: '#ffffff' },
-	{ size: 15, limit: Infinity, fill: '#C4A732', text: '#1f2937' },
-	{ size: 10, limit: Infinity, fill: '#40694C', text: '#ffffff' },
+	{ size: 25, limit: Infinity, fill: '#7D3B3F', text: '#ffffff' },
+	{ size: 20, limit: Infinity, fill: '#33506D', text: '#ffffff' },
+	{ size: 15, limit: Infinity, fill: '#C4A731', text: '#1f2937' },
+	{ size: 10, limit: Infinity, fill: '#41694C', text: '#ffffff' },
 	{ size: 5, limit: Infinity, fill: '#C5C5C7', text: '#0f172a' },
-	{ size: 2.5, limit: 1, fill: '#93362F', text: '#ffffff' },
-	{ size: 2, limit: 1, fill: '#02487E', text: '#ffffff' },
+	{ size: 2.5, limit: 1, fill: '#93352F', text: '#ffffff' },
+	{ size: 2, limit: 1, fill: '#02477E', text: '#ffffff' },
 	{ size: 1.5, limit: 1, fill: '#B4A34A', text: '#1f2937' },
 	{ size: 1, limit: 1, fill: '#3E6730', text: '#ffffff' },
 	{ size: 0.5, limit: 1, fill: '#CECDD3', text: '#0f172a' }
