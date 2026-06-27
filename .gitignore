@@ -145,3 +145,4 @@ vite.config.ts.timestamp-*
 
 # Local data storage
 data/
+raw/
