@@ -14,7 +14,10 @@ export const workoutTemplate: SessionExercise[] = [
 	{ name: 'Bench Press', sets: [], defaultWeight: 63, defaultReps: 5 },
 	{ name: 'Bent Over Rows', sets: [], defaultWeight: 64, defaultReps: 5 },
 	{ name: 'Lateral Raises', sets: [], defaultWeight: 4, defaultReps: 12, setCount: 2, optional: true },
-	{ name: 'Face Pulls', sets: [], defaultWeight: 15, defaultReps: 12, setCount: 2, optional: true }
+	{ name: 'Face Pulls', sets: [], defaultWeight: 15, defaultReps: 12, setCount: 2, optional: true },
+	{ name: 'Y-Raises', sets: [], defaultWeight: 4, defaultReps: 12, setCount: 2, optional: true },
+	{ name: 'Ab Rollout', sets: [], defaultWeight: 0, defaultReps: 10, setCount: 2, optional: true },
+	{ name: 'Weighted Knee Raises', sets: [], defaultWeight: 0, defaultReps: 10, setCount: 2, optional: true }
 ];
 
 export const todayString = () => new Date().toDateString();
@@ -107,7 +110,8 @@ function getRepRange(exerciseName: string): RepRange {
 	}
 	const accessoryHighRep =
 		exerciseName.toLowerCase().includes('lateral raise') ||
-		exerciseName.toLowerCase().includes('face pull');
+		exerciseName.toLowerCase().includes('face pull') ||
+		exerciseName.toLowerCase().includes('y-raise');
 	if (accessoryHighRep) {
 		return { lower: 12, upper: 15 };
 	}
@@ -172,7 +176,9 @@ export function computeProgression(
 	let advice: ProgressionAdvice;
 
 	if (hitsUpperBound) {
-		const suggested = roundUpToIncrement(baseWeight * 1.025);
+		// Floor the bump at one loadable increment so a ~2.5% nudge can never round
+		// back to the same load — otherwise 0 kg (bodyweight starts) never progresses.
+		const suggested = roundUpToIncrement(Math.max(baseWeight * 1.025, baseWeight + WEIGHT_INCREMENT_KG));
 		advice = {
 			action: 'increase',
 			message: `All sets at ${repRange.upper}+ last session — nudged weight up by ~2.5%.`,
