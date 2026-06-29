@@ -32,6 +32,21 @@ check('bar-only (20 kg) is valid with no plates', buildPlateBreakdown(20).isVali
 check('below the bar (15 kg) is invalid', !buildPlateBreakdown(15).isValid);
 check('124 kg spreads the set instead of doubling (25+20+5+2)', JSON.stringify(sortedPlates(124)) === JSON.stringify([25, 20, 5, 2]), JSON.stringify(sortedPlates(124)));
 
+// Equipment: one-sided subtracts the 20 kg bar but loads it all on one end (no halving).
+const oneSided = buildPlateBreakdown(64, 'one-sided');
+check(
+	'one-sided subtracts the bar, no halving (64 → 44 on one end: 25+15+2.5+1.5)',
+	oneSided.isValid &&
+		oneSided.message === 'Plates loaded' &&
+		JSON.stringify(oneSided.plates.slice().sort((a, b) => b - a)) === JSON.stringify([25, 15, 2.5, 1.5]),
+	JSON.stringify(oneSided)
+);
+check('one-sided below the bar is invalid', !buildPlateBreakdown(15, 'one-sided').isValid);
+check('one-sided at exactly the bar is "bar only"', buildPlateBreakdown(20, 'one-sided').isValid && buildPlateBreakdown(20, 'one-sided').plates.length === 0);
+// Equipment: non-plate types get no breakdown.
+check('dumbbell has no plate breakdown', !buildPlateBreakdown(20, 'dumbbell').isValid);
+check('bodyweight has no plate breakdown', !buildPlateBreakdown(0, 'bodyweight').isValid);
+
 // --- Sweep every loadable total --------------------------------------------
 // Loadable totals step by 1 kg (smallest plate 0.5 kg/side = 1 kg total granularity).
 let unloadable = 0;

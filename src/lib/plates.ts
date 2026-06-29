@@ -4,6 +4,8 @@
 // (SetRow.svelte) and the tests (plates.test.ts) both read from here, so a change
 // to the real-world setup only needs to happen in one place.
 
+import type { EquipmentType } from './types';
+
 export const BAR_WEIGHT_KG = 20;
 
 export type PlateSpec = {
@@ -68,45 +70,62 @@ function greedyLoad(perSide: number, cap: (size: number, limit: number) => numbe
 }
 
 /**
- * Barbell loading, prefering the whole set over doubled plates.
+ * Greedy load for a single end, prefering the whole set over doubled plates.
  *
- * First we try one of every plate (largest-first) — this spreads across distinct
- * discs (25+20+15+10…) and never doubles. That covers everything up to one of each
- * plate (82.5 kg per side / 185 kg total). Only when a weight can't be made that way
- * do we fall back to repeating the big discs, so doubles appear only when truly
- * necessary. (See plates.test.ts.)
+ * Pass 1 tries one of every plate (largest-first) — spreads across distinct discs
+ * (25+20+15+10…) and never doubles, covering everything up to one of each plate.
+ * Pass 2 only runs when that isn't enough, repeating the big discs so doubles appear
+ * only when truly necessary. (See plates.test.ts.)
+ */
+function loadFor(amount: number): { plates: number[]; remaining: number } {
+	let { plates, remaining } = greedyLoad(amount, () => 1);
+	if (remaining > EPSILON) {
+		({ plates, remaining } = greedyLoad(amount, (_size, limit) => limit));
+	}
+	return { plates, remaining };
+}
+
+/**
+ * Plate breakdown for a logged weight, given how the exercise is loaded. Both
+ * plate-loaded types use the same 20 kg bar; they differ only in how it's split:
+ *   - `barbell`   — symmetric: plates = (weight − bar) / 2 per side.
+ *   - `one-sided` — landmine / T-bar / lever: same 20 kg bar, but all the plates
+ *     go on the one end, so (weight − bar) with no halving.
+ *   - everything else (dumbbell / machine / bodyweight / weighted) — no breakdown.
  */
 export function buildPlateBreakdown(
-	totalWeight: number,
+	weight: number,
+	equipment: EquipmentType = 'barbell',
 	barWeight = BAR_WEIGHT_KG
 ): PlateBreakdown {
-	if (!Number.isFinite(totalWeight) || totalWeight <= 0) {
+	if (equipment !== 'barbell' && equipment !== 'one-sided') {
+		return { plates: [], message: '', isValid: false };
+	}
+
+	if (!Number.isFinite(weight) || weight <= 0) {
 		return { plates: [], message: 'No load', isValid: false };
 	}
 
-	if (totalWeight < barWeight) {
+	if (weight < barWeight) {
 		return { plates: [], message: `Below ${barWeight} kg bar`, isValid: false };
 	}
 
-	const perSide = (totalWeight - barWeight) / 2;
-	if (perSide <= 0) {
+	const loaded = weight - barWeight;
+	if (loaded <= 0) {
 		return { plates: [], message: 'Bar only', isValid: true };
 	}
 
-	// Pass 1: one of each plate — spreads across the set, never doubles.
-	let { plates, remaining } = greedyLoad(perSide, () => 1);
-
-	// Pass 2 (heavy loads only): one of each isn't enough, so let the big discs
-	// repeat per their `limit`. Change plates stay capped at one.
-	if (remaining > EPSILON) {
-		({ plates, remaining } = greedyLoad(perSide, (_size, limit) => limit));
-	}
-
+	const perEnd = equipment === 'one-sided' ? loaded : loaded / 2;
+	const { plates, remaining } = loadFor(perEnd);
 	if (remaining > EPSILON) {
 		return { plates: [], message: 'Cannot match plate sizes', isValid: false };
 	}
 
-	return { plates, message: 'Plates per side', isValid: true };
+	return {
+		plates,
+		message: equipment === 'one-sided' ? 'Plates loaded' : 'Plates per side',
+		isValid: true
+	};
 }
 
 export function getPlateColor(size: number) {

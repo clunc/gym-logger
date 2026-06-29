@@ -119,6 +119,7 @@
 				{set}
 				{setIdx}
 				{exerciseIdx}
+				equipment={exercise.equipment}
 				{onAdjustWeight}
 				{onAdjustReps}
 				{onSetWeight}

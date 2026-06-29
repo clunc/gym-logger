@@ -7,17 +7,17 @@ export const REST_SECONDS = 90;
 export type ExerciseNames = Record<string, string>;
 
 export const workoutTemplate: SessionExercise[] = [
-	{ name: 'Deadlifts', sets: [], defaultWeight: 90, defaultReps: 5 },
-	{ name: 'Squats', sets: [], defaultWeight: 80, defaultReps: 5 },
-	{ name: 'Shoulder Press', sets: [], defaultWeight: 50, defaultReps: 5 },
-	{ name: 'Chin Up', sets: [], defaultWeight: 0, defaultReps: 5 },
-	{ name: 'Bench Press', sets: [], defaultWeight: 63, defaultReps: 5 },
-	{ name: 'Bent Over Rows', sets: [], defaultWeight: 64, defaultReps: 5 },
-	{ name: 'Lateral Raises', sets: [], defaultWeight: 4, defaultReps: 12, setCount: 2, optional: true },
-	{ name: 'Face Pulls', sets: [], defaultWeight: 15, defaultReps: 12, setCount: 2, optional: true },
-	{ name: 'Y-Raises', sets: [], defaultWeight: 4, defaultReps: 12, setCount: 2, optional: true },
-	{ name: 'Ab Rollout', sets: [], defaultWeight: 0, defaultReps: 10, setCount: 2, optional: true },
-	{ name: 'Weighted Knee Raises', sets: [], defaultWeight: 0, defaultReps: 10, setCount: 2, optional: true }
+	{ name: 'Deadlifts', sets: [], defaultWeight: 90, defaultReps: 5, equipment: 'barbell' },
+	{ name: 'Squats', sets: [], defaultWeight: 80, defaultReps: 5, equipment: 'barbell' },
+	{ name: 'Shoulder Press', sets: [], defaultWeight: 50, defaultReps: 5, equipment: 'barbell' },
+	{ name: 'Chin Up', sets: [], defaultWeight: 0, defaultReps: 5, equipment: 'weighted' },
+	{ name: 'Bench Press', sets: [], defaultWeight: 63, defaultReps: 5, equipment: 'barbell' },
+	{ name: 'Chest Supported Lever Rows', sets: [], defaultWeight: 54, defaultReps: 5, equipment: 'one-sided' },
+	{ name: 'Lateral Raises', sets: [], defaultWeight: 4, defaultReps: 12, setCount: 2, optional: true, equipment: 'dumbbell' },
+	{ name: 'Face Pulls', sets: [], defaultWeight: 15, defaultReps: 12, setCount: 2, optional: true, equipment: 'machine' },
+	{ name: 'Y-Raises', sets: [], defaultWeight: 4, defaultReps: 12, setCount: 2, optional: true, equipment: 'dumbbell' },
+	{ name: 'Ab Rollout', sets: [], defaultWeight: 0, defaultReps: 10, setCount: 2, optional: true, equipment: 'bodyweight' },
+	{ name: 'Weighted Knee Raises', sets: [], defaultWeight: 0, defaultReps: 10, setCount: 2, optional: true, equipment: 'weighted' }
 ];
 
 export const todayString = () => new Date().toDateString();

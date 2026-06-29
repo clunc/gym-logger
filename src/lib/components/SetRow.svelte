@@ -1,7 +1,6 @@
 <script lang="ts">
-	import type { SetEntry } from '$lib/types';
+	import type { SetEntry, EquipmentType } from '$lib/types';
 	import {
-		BAR_WEIGHT_KG,
 		WEIGHT_INCREMENT_KG,
 		buildPlateBreakdown,
 		getPlateColor,
@@ -11,6 +10,7 @@
 	export let set: SetEntry;
 	export let exerciseIdx: number;
 	export let setIdx: number;
+	export let equipment: EquipmentType | undefined = undefined;
 	export let onAdjustWeight: (exerciseIdx: number, setIdx: number, delta: number) => void;
 	export let onAdjustReps: (exerciseIdx: number, setIdx: number, delta: number) => void;
 	export let onSetWeight: (exerciseIdx: number, setIdx: number, value: number | null) => void;
@@ -64,10 +64,7 @@
 		return { items, totalWidth: Math.max(x - gap, 0) };
 	}
 
-	$: plateBreakdown =
-		Number.isFinite(set.weight) && set.weight >= BAR_WEIGHT_KG
-			? buildPlateBreakdown(set.weight)
-			: { plates: [], message: '', isValid: false };
+	$: plateBreakdown = buildPlateBreakdown(set.weight, equipment);
 </script>
 
 <div class="set-row">
